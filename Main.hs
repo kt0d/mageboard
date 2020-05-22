@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Data.List
+import Data.Maybe
 import Control.Monad
 import Control.Monad.Trans
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import qualified Network.Wai.Middleware.RequestLogger as WAI (logStdoutDev)
 import qualified Network.Wai.Middleware.Static as WAI 
 import qualified Web.Scotty as S
@@ -14,6 +16,7 @@ import qualified Database.SQLite.Simple.FromRow as DB (fieldWith)
 import qualified Database.SQLite.Simple.FromField as DB (FieldParser, fieldData, returnError)
 import qualified Database.SQLite.Simple.Ok as DB (Ok(..))
 import qualified Database.SQLite.Simple.Time.Implementation as DB
+import qualified Database.SQLite3 as DirectDB (open, close, exec)
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -22,14 +25,39 @@ import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 
+postsDb :: FilePath
+postsDb = "posts.db" 
+
+schemaFile :: FilePath
+schemaFile = "schema.sql"
+
+cssFile :: FilePath
+cssFile = "/board.css"
+
 data Post = Post {
     number :: Int,
-    comment :: Text,
-    date :: UTCTime
-}
+    date :: UTCTime,
+    author :: Text,
+    email :: Text,
+    subject :: Text,
+    text :: Text
+} deriving (Show)
+
+data File = File {
+    filename :: Text,
+    size :: Int,
+    width :: Int,
+    height :: Int
+} deriving (Show)
+
 
 instance DB.FromRow Post where
-    fromRow = Post <$> DB.field <*> DB.field <*> DB.fieldWith parseDate
+    fromRow = Post  <$> DB.field 
+                    <*> DB.fieldWith parseDate 
+                    <*> DB.field 
+                    <*> DB.field 
+                    <*> DB.field
+                    <*> DB.field
         where 
             parseDate :: DB.FieldParser UTCTime
             parseDate f = case DB.fieldData f of 
@@ -41,52 +69,71 @@ instance DB.FromRow Post where
                     Right t -> DB.Ok $ t
                 _ -> DB.returnError DB.Incompatible f "expecting an SQLInteger column type"
 
-postsDb :: String
-postsDb = "posts.db" 
-
 setupDb :: IO ()
-setupDb = DB.withConnection postsDb $ \c -> do 
-    DB.execute_ c   "CREATE TABLE IF NOT EXISTS Posts \
-                    \(Number INTEGER PRIMARY KEY, Text TEXT, Date INTEGER)"
-    DB.execute_ c   "CREATE TRIGGER IF NOT EXISTS set_post_date AFTER INSERT ON Posts\n\
-                    \BEGIN\n\
-                    \UPDATE Posts SET Date = strftime('%s','now') WHERE  ROWID = NEW.ROWID; \n\
-                    \END;"
+setupDb = do
+    conn <- DirectDB.open $ T.pack postsDb
+    schema <- T.readFile schemaFile
+    DirectDB.exec conn schema
+    DirectDB.close conn
 
-insertPost :: Text -> IO ()
-insertPost t = DB.withConnection postsDb $ \c -> 
-    DB.executeNamed c "INSERT INTO Posts (Text) VALUES (:text)" [":text" DB.:= t]
+insertPost :: Text -> Text -> Text -> Text -> IO Int
+insertPost n e s t = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
+                        \VALUES (:name, :email, :subject, :text)" 
+                        [ ":name"     DB.:= n
+                        , ":email"    DB.:= e
+                        , ":subject"  DB.:= s
+                        , ":text"     DB.:= t]
+    fromIntegral <$> DB.lastInsertRowId c
+    
 
 getPosts :: IO [Post]
 getPosts = DB.withConnection postsDb $ \c ->
     DB.query_ c "SELECT * FROM Posts ORDER BY Number DESC" 
 
-space :: H.Html 
-space = H.preEscapedToMarkup ("&nbsp" :: Text)
 
 postForm :: H.Html
 postForm = H.fieldset $ H.form ! A.id "postform" ! 
     A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ do
+    H.label ! A.for "name" $ "Name"
+    H.input ! A.id "name" ! A.name "name" ! A.type_ "text" ! A.maxlength "64" 
+    H.br
+    H.label ! A.for "email" $ "Email"
+    H.input ! A.id "email" ! A.name "email" ! A.type_ "text" ! A.maxlength "320"
+    H.br
+    H.label ! A.for "subject" $ "Subject"
+    H.input ! A.id "subject" ! A.name "subject" ! A.type_ "text" ! A.maxlength "128" 
+    H.br
     H.label ! A.for "comment" $ "Comment"
-    H.textarea ! A.id "comment" ! A.name "comment" ! A.form "postform" ! A.rows "5" $ mempty
+    H.textarea ! A.id "comment" ! A.name "comment" ! A.form "postform" 
+        ! A.rows "5" ! A.maxlength "32768" $ mempty
+    H.br
+    H.label ! A.for "file" $ "File"
+    H.input ! A.id "file" ! A.type_ "file" ! A.name "file"
     H.br
     H.input ! A.type_ "submit" ! A.value "Post"
     H.br
+
+space :: H.Html 
+space = "\n"
 
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postid $ do
     H.div ! A.class_ "post" $ do
         H.div ! A.class_ "post-header" $ do
-            H.span ! A.class_ "post-name" $ "Anonymous"
+            H.span ! A.class_ "post-subject" $ H.text $ subject p
+            space
+            H.span ! A.class_ "post-name" $ do 
+                let emailTag = H.a ! A.class_ "post-email" ! A.href (H.textValue $ mconcat ["mailto:", email p])
+                (case email p of "" -> id; _ -> emailTag) $ H.text $ author p
             space
             H.span ! A.class_ "post-date" $ 
                 H.time ! A.datetime (H.toValue datetime) $ (H.string datetime)
             space
             H.span ! A.class_ "post-number" $ 
                 H.a ! A.href (mconcat ["#", postid]) $ 
-                    H.preEscapedString $ mconcat ["No.", show $ number p]
-        H.div ! A.class_ "post-comment" $ do
-            H.text $ comment p
+                    H.string $ mconcat ["No.", show $ number p]
+        H.div ! A.class_ "post-comment" $ H.text $ text p
     H.br
     where  
         postid = H.preEscapedStringValue $ mconcat ["postid", show $ number p]
@@ -95,11 +142,12 @@ postView p = H.div ! A.class_ "post-container" ! A.id postid $ do
 
 boardView :: [Post] -> H.Html
 boardView ps = do 
-    H.style $ H.text css
+    H.head $
+        H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
     postForm
     H.hr 
     H.div ! A.class_ "content" $ do
-        mconcat $ intersperse (H.hr ! A.class_ "invisible") (map postView ps)
+        mconcat $ intersperse (H.hr ! A.class_ "invisible") $ map postView ps
     H.hr
 
 blaze :: H.Html -> S.ActionM ()
@@ -110,34 +158,22 @@ main = do
     setupDb
     S.scotty 3000 $ do
         S.middleware WAI.logStdoutDev
-        S.middleware $ WAI.staticPolicy (WAI.noDots WAI.>-> WAI.addBase "static")
+        S.middleware $ WAI.staticPolicy $ WAI.noDots WAI.>-> 
+            WAI.addBase "static" WAI.<|> WAI.addBase "media"
         S.get "/" $ do
             posts <- liftIO getPosts
             blaze $ boardView posts
         S.post "/post" $ do
             let maxPostLen = 500
-            t <- S.param "comment"
-            case T.compareLength t maxPostLen of
-                GT -> S.status S.badRequest400
-                _ -> do
-                    liftIO $ insertPost t
-                    S.redirect "/"
-
-css :: Text
-css  = "body { background-color: #DFE; } \
-\ hr { position: relative } \
-\ fieldset { border: none } \
-\ form#postform { top: 30px; right: 10px; background-color: #BDC; border: \
-\   1px solid #000; padding: 5px; } \
-\ form label { background-color: #ACB; text-align: left; display: inline-block; \
-\   width: 100px; vertical-align: top; margin-right: 5px; padding: 4px; } \
-\ form#postform>label { width: 7ch;} \
-\ textarea { margin-right: 5px; margin-bottom: 5px; border: 1px solid #000; \
-\   width: calc(100% - 75px); resize: both; } \
-\ div.post-container { padding-top: 25px; margin-top: -25px; } \
-\ div.post { background-color: #BDC; padding: 10px; border: 1px solid #000; \
-\ display: inline-block; margin-bottom: 10px; max-width: 1150px; word-wrap: break-word; } \
-\ div.post>div.post-header { margin-bottom: 5px; } \
-\ div.post>div.post-header>span.post-name { font-weight: bold; color: #070; } \
-\ div.post-comment { white-space: pre-wrap;} \
-\ .invisible { display: none; } "
+            let paramOr p a = S.param p `S.rescue` (const $ return a)
+            postAuthor  <- "name"    `paramOr` "Nameless"
+            postEmail   <- "email"   `paramOr` ""
+            postSubject <- "subject" `paramOr` ""
+            postText    <- "comment" `paramOr` ""
+            -- case T.compareLength postText maxPostLen of
+            --     GT -> S.status S.badRequest400 >> S.finish
+            --     _ -> do 
+            postNumber <- liftIO $ insertPost postAuthor postEmail postSubject postText
+            --files <- S.files
+            --liftIO $ forM_ (take 1 files) (insertFile postNumber)
+            S.redirect "/"

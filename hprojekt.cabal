@@ -26,6 +26,7 @@ executable hprojekt
     text,
     blaze-html,
     sqlite-simple,
+    direct-sqlite,
     scotty,
     regex,
     process,
