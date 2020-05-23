@@ -27,10 +27,7 @@ schemaFile = "schema.sql"
 instance DB.FromRow Post where
     fromRow = Post  <$> DB.field 
                     <*> DB.fieldWith parseDate 
-                    <*> DB.field 
-                    <*> DB.field 
-                    <*> DB.field
-                    <*> DB.field
+                    <*> (Stub <$> DB.field <*> DB.field <*> DB.field <*> DB.field)
         where 
             parseDate :: DB.FieldParser UTCTime
             parseDate f = case DB.fieldData f of 
@@ -49,14 +46,14 @@ setupDb = do
     DirectDB.exec conn schema
     DirectDB.close conn
 
-insertPost :: Text -> Text -> Text -> Text -> IO Int
-insertPost n e s t = DB.withConnection postsDb $ \c -> do
+insertPost :: PostStub -> IO Int
+insertPost s = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
                         \VALUES (:name, :email, :subject, :text)" 
-                        [ ":name"     DB.:= n
-                        , ":email"    DB.:= e
-                        , ":subject"  DB.:= s
-                        , ":text"     DB.:= t]
+                        [ ":name"     DB.:= author s
+                        , ":email"    DB.:= email s
+                        , ":subject"  DB.:= subject s
+                        , ":text"     DB.:= text s]
     fromIntegral <$> DB.lastInsertRowId c
     
 

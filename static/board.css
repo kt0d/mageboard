@@ -67,3 +67,14 @@ div.post-comment {
 .invisible {
     display: none;
 }
+
+div.container {
+    margin: auto;
+    background-color: #CED;
+    border: 1px solid #000;
+    padding: 10px;
+}
+
+div.container.narrow {
+    max-width: 670px;
+}

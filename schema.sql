@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS Posts (
     Number          INTEGER     NOT NULL,
     Date            INTEGER     NOT NULL    DEFAULT 0,
-    Name            TEXT        NOT NULL    DEFAULT 'Nameless'  CHECK(length(Name) <= 64),
-    Email           TEXT        NOT NULL    DEFAULT ''          CHECK(length(Email) <= 320),
+    Name            TEXT        NOT NULL    DEFAULT 'Nameless'  CHECK(length(Name)    <= 64),
+    Email           TEXT        NOT NULL    DEFAULT ''          CHECK(length(Email)   <= 320),
     Subject         TEXT        NOT NULL    DEFAULT ''          CHECK(length(Subject) <= 128),
-    Text            TEXT        NOT NULL    DEFAULT ''          CHECK(length(Text) <= 32768),
+    Text            TEXT        NOT NULL    DEFAULT ''          CHECK(length(Text)    <= 32768),
 
     PRIMARY KEY (Number)
 );

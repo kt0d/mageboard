@@ -1,5 +1,6 @@
 module Imageboard.Types (
     Post(..),
+    PostStub(..),
     File(..)
 ) where
 import Data.Text (Text)
@@ -8,6 +9,10 @@ import Data.Time.Clock (UTCTime)
 data Post = Post {
     number :: Int,
     date :: UTCTime,
+    content :: PostStub
+} deriving (Show)
+
+data PostStub = Stub {
     author :: Text,
     email :: Text,
     subject :: Text,
