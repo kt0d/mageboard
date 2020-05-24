@@ -18,14 +18,14 @@ form label {
     background-color: #ACB;
     text-align: left;
     display: inline-block;
-    width: 100px;
+    width: 120px;
     vertical-align: top;
     margin-right: 5px;
     padding: 4px;
 }
 
 form#postform>label {
-    width: 7ch;
+    width: 80px;
 }
 
 textarea {
@@ -34,6 +34,13 @@ textarea {
     border: 1px solid #000;
     width: calc(100% - 75px);
     resize: both;
+}
+
+form input {
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border: 1px solid #000;
+    width: 200px;
 }
 
 div.post-container {
@@ -77,4 +84,29 @@ div.container {
 
 div.container.narrow {
     max-width: 670px;
+}
+
+/* Post formatting */
+span.greentext {
+    color: #070;
+}
+
+span.pinktext {
+    color: #A66;
+}
+
+span.redtext {
+    color: #E33;
+    font-weight: bolder;
+    font-size: 11pt;
+    letter-spacing: -0.7px;
+}
+
+span.spoiler {
+    background-color: #000;
+    color: #000;
+}
+
+span.spoiler:hover {
+    color: #FFF;
 }

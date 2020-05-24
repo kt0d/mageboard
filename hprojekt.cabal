@@ -23,6 +23,7 @@ executable hprojekt
     Imageboard.Pages
     Imageboard.Database
     Imageboard.Types
+    Imageboard.Markup
   -- other-extensions:
   build-depends:       
     base >=4.10,
@@ -32,8 +33,9 @@ executable hprojekt
     sqlite-simple,
     direct-sqlite,
     scotty,
-    regex,
     process,
+    attoparsec,
+    replace-attoparsec,
     time,
     wai-extra,
     wai-middleware-static,

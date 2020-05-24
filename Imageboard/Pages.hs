@@ -4,12 +4,14 @@ module Imageboard.Pages (
     errorView
 ) where
 import Data.Text (Text)
+import Data.Text as T
 import Data.List as List
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Imageboard.Types
+import Imageboard.Markup
 
 cssFile :: FilePath
 cssFile = "/board.css"
@@ -17,10 +19,11 @@ cssFile = "/board.css"
 space :: H.Html 
 space = "\n"
 
-commonHead :: H.Html
-commonHead = H.head $
+commonHtml :: H.Html -> H.Html
+commonHtml content = H.docTypeHtml $ do
+    H.head $
         H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
-
+    H.body content
 
 postForm :: H.Html
 postForm = H.fieldset $ H.form ! A.id "postform" ! 
@@ -51,7 +54,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-subject" $ H.text $ postSubject
             space
             H.span ! A.class_ "post-name" $ do 
-                (case postEmail of "" -> id; _ -> emailTag) $ H.text $ postAuthor
+                (if T.null postEmail then id else emailTag) $ H.text $ postAuthor
             space
             H.span ! A.class_ "post-date" $ 
                 H.time ! A.datetime (H.toValue postDate) $ (H.string postDate)
@@ -59,7 +62,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-number" $ 
                 H.a ! A.href (mconcat ["#", postNumber]) $ 
                     H.string $ mconcat ["No.", show $ number p]
-        H.div ! A.class_ "post-comment" $ H.text $ postText
+        H.div ! A.class_ "post-comment" $ H.preEscapedText postText
     H.br
     where  
         emailTag = H.a ! A.class_ "post-email" ! A.href (H.textValue $ mconcat ["mailto:", postEmail])
@@ -68,20 +71,20 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
         postAuthor = author $ content p
         postEmail = email $ content p
         postSubject = subject $ content p
-        postText = text $ content p
+        postText = case postEmail of
+            "nofo" -> escapeHTML $ text $ content p
+            _ -> formatPost $ text $ content p
 
 
 boardView :: [Post] -> H.Html
-boardView ps = do 
-    commonHead
+boardView ps = commonHtml $ do 
     postForm
     H.hr 
     H.div ! A.class_ "content" $ do
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ map postView ps
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ fmap postView ps
     H.hr
 
 errorView :: Text -> H.Html
-errorView msg = do
-    commonHead
+errorView msg = commonHtml $ do
     H.div ! A.class_ "content" $
         H.div ! A.class_ "container narrow" $ H.text msg
