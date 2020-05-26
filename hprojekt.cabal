@@ -24,11 +24,13 @@ executable hprojekt
     Imageboard.Database
     Imageboard.Types
     Imageboard.Markup
+    Imageboard.FileUpload
   -- other-extensions:
   build-depends:       
     base >=4.10,
     mtl,
     text,
+    bytestring,
     blaze-html,
     sqlite-simple,
     direct-sqlite,
@@ -40,7 +42,8 @@ executable hprojekt
     wai-extra,
     wai-middleware-static,
     hs-captcha,
-    http-types
+    http-types,
+    cryptonite
 
   -- hs-source-dirs:
   default-language:    Haskell2010

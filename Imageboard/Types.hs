@@ -9,7 +9,8 @@ import Data.Time.Clock (UTCTime)
 data Post = Post {
     number :: Int,
     date :: UTCTime,
-    content :: PostStub
+    content :: PostStub,
+    file :: Maybe File
 } deriving (Show)
 
 data PostStub = Stub {
@@ -22,6 +23,6 @@ data PostStub = Stub {
 data File = File {
     filename :: Text,
     size :: Int,
-    width :: Int,
-    height :: Int
+    width :: Maybe Int,
+    height :: Maybe Int
 } deriving (Show)
