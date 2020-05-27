@@ -62,6 +62,10 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-number" $ 
                 H.a ! A.href (mconcat ["#", postNumber]) $ 
                     H.string $ mconcat ["No.", show $ number p]
+        flip (maybe mempty) (file p) $ \f -> do
+            let link = H.preEscapedTextValue $ mconcat ["/media/", filename f, ".", extension f]
+            H.a ! A.type_ "blank" ! A.href link  $ 
+                H.img ! A.class_ "post-file-thumbnail" ! A.width "200" ! A.height "200" ! A.src link
         H.div ! A.class_ "post-comment" $ H.preEscapedText postText
     H.br
     where  

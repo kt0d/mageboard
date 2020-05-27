@@ -6,7 +6,7 @@ module Imageboard.Database (
     insertPostWithFile,
     getPosts
 ) where
-import Control.Monad (liftM4)
+import Control.Monad (liftM5, liftM)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -27,21 +27,21 @@ postsDb = "posts.db"
 schemaFile :: FilePath
 schemaFile = "schema.sql"
 
+parseDate :: DB.FieldParser UTCTime
+parseDate f = case DB.fieldData f of 
+    -- INTEGER as Unix Time, the number of seconds since 1970-01-01 00:00:00 UTC. 
+    DB.SQLInteger x -> DB.Ok . posixSecondsToUTCTime $ fromIntegral x
+    -- TEXT as ISO8601 strings ("YYYY-MM-DD HH:MM:SS.SSS"). 
+    DB.SQLText x -> case DB.parseUTCTime x of 
+        Left s -> DB.returnError DB.ConversionFailed f s
+        Right t -> DB.Ok $ t
+    _ -> DB.returnError DB.Incompatible f "expecting an SQLInteger column type"
+
 instance DB.FromRow Post where
     fromRow = Post  <$> DB.field 
                     <*> DB.fieldWith parseDate 
                     <*> (Stub <$> DB.field <*> DB.field <*> DB.field <*> DB.field)
-                    <*> (liftM4 File <$> DB.field <*> DB.field <*> DB.field <*> DB.field)
-        where 
-            parseDate :: DB.FieldParser UTCTime
-            parseDate f = case DB.fieldData f of 
-                -- INTEGER as Unix Time, the number of seconds since 1970-01-01 00:00:00 UTC. 
-                DB.SQLInteger x -> DB.Ok . posixSecondsToUTCTime $ fromIntegral x
-                -- TEXT as ISO8601 strings ("YYYY-MM-DD HH:MM:SS.SSS"). 
-                DB.SQLText x -> case DB.parseUTCTime x of 
-                    Left s -> DB.returnError DB.ConversionFailed f s
-                    Right t -> DB.Ok $ t
-                _ -> DB.returnError DB.Incompatible f "expecting an SQLInteger column type"
+                    <*> (liftM5 File <$> DB.field <*> DB.field <*> DB.field <*> (Just <$> DB.field) <*> (Just <$> DB.field))
             
 
 setupDb :: IO ()
@@ -63,9 +63,10 @@ insertPost s = DB.withConnection postsDb $ \c -> do
 
 insertFile :: File -> IO Int
 insertFile f = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Files (Name, Size, Width, Height) \
-                        \VALUES (:name, :size, :width, :height)" 
+    DB.executeNamed c   "INSERT INTO Files (Name, Extension, Size, Width, Height) \
+                        \VALUES (:name, :ext, :size, :width, :height)" 
                         [ ":name"   DB.:= filename f
+                        , ":ext"    DB.:= extension f
                         , ":size"   DB.:= size f
                         , ":width"  DB.:= width f
                         , ":height" DB.:= height f]

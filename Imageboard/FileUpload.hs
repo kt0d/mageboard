@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}    
 module Imageboard.FileUpload (
-    saveFile
+    saveFile,
+    FileData
 ) where
+import Control.Monad.Except
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.ByteString.Lazy (ByteString)
@@ -14,15 +17,41 @@ import Debug.Trace
 
 import Imageboard.Types (File(..))
 
+type FileData = N.FileInfo ByteString
+
+uploadDir :: FilePath
+uploadDir = "static/media/"
+
 hashFile :: ByteString -> H.Digest SHA512
 hashFile = H.hashlazy
 
-saveFile :: S.File -> IO (Either Text File)
+-- https://www.garykessler.net/library/file_sigs.html
+recognizeFormat :: ByteString -> Either Text Text
+recognizeFormat b
+    | is "\xFF\xD8"                         = Right "jpg"
+    | is "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A" = Right "png"
+    | is "GIF87a" || is "GIF89a"            = Right "gif"
+    | is "%PDF"                             = Right "pdf"
+    | is "\x1A\x45\xDF\xA3"                 = Right "webm"
+    | isAfter 4 "ftypMSNV"                  = Right "mp4"
+    | is "ID3"                              = Right "mp3"
+    | is "OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00" = Right "ogg"
+    | otherwise = Left "Unsupported file format"
+    where 
+        isAfter n = flip B.isPrefixOf (B.drop n b)
+        is = isAfter 0
+
+saveFile :: FileData -> ExceptT Text IO File
 saveFile f = do
-    let bytes = N.fileContent $ snd f
-    let newFilename = show $ hashFile bytes
-    B.writeFile newFilename bytes
-    return $ Right $ File (T.pack newFilename) (fromIntegral $ B.length bytes) Nothing Nothing
+    let bytes = N.fileContent f
+    let len = B.length bytes
+    if len > 16777216 then throwError "File is too big"
+    else do
+        let mime = N.fileContentType f
+        format <- liftEither $ recognizeFormat bytes
+        let baseName = (show $ hashFile bytes)
+        liftIO $ B.writeFile (uploadDir ++ baseName ++ "." ++ T.unpack format) bytes
+        return $ File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing Nothing
 
     
 

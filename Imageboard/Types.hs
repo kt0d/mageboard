@@ -1,10 +1,13 @@
 module Imageboard.Types (
     Post(..),
     PostStub(..),
-    File(..)
+    File(..),
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
+
+data FileType = Image | Video | Audio | Document
+    deriving (Show)
 
 data Post = Post {
     number :: Int,
@@ -22,6 +25,7 @@ data PostStub = Stub {
 
 data File = File {
     filename :: Text,
+    extension :: Text,
     size :: Int,
     width :: Maybe Int,
     height :: Maybe Int

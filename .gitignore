@@ -17,3 +17,4 @@ cabal-tests.log
 
 **.swp
 **.db
+static/media/*

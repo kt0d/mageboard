@@ -58,6 +58,12 @@ div.post {
     word-wrap: break-word;
 }
 
+img.post-file-thumbnail, video.post-video {
+    float: left;
+    margin-top: 5px;
+    margin-right: 10px;
+}
+
 div.post>div.post-header {
     margin-bottom: 5px;
 }

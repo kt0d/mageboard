@@ -3,6 +3,7 @@ module Imageboard.Actions (
     createPost,
     blaze
 ) where
+import Control.Monad.Except
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -25,19 +26,20 @@ blaze :: Html -> S.ActionM ()
 blaze = S.html . renderHtml  
   
 maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
-maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent . snd) <$> S.files 
+maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$> S.files 
 
-tryMakePost :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Either Text PostStub
-tryMakePost a e s t
-    | postText    `cmp` 5    == LT = Left "Post text too short"
-    | postText    `cmp` 500  == GT = Left "Post text too long"
-    | postEmail   `cmp` 320  == GT = Left "Email too long"
-    | postSubject `cmp` 128  == GT = Left "Subject too long"
-    | postAuthor  `cmp` 64   == GT = Left "Author name too long"
+tryMkStub :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Either Text PostStub
+tryMkStub a e s t
+    | postText    #< 5    = Left "Post text too short"
+    | postText    #> 500  = Left "Post text too long"
+    | postEmail   #> 320  = Left "Email too long"
+    | postSubject #> 128  = Left "Subject too long"
+    | postAuthor  #> 64   = Left "Author name too long"
     | T.count "\n" postText > 20 = Left "Too many newlines in post text"
     | otherwise = Right $ Stub postAuthor postEmail postSubject postText
     where
-        cmp = T.compareLength
+        x #< y = T.compareLength x y == LT
+        x #> y = T.compareLength x y == GT
         postAuthor  = case a of
             Just name | not $ T.null name -> name
             _ -> "Nameless"
@@ -45,7 +47,13 @@ tryMakePost a e s t
         postSubject = fromMaybe "" s
         postText    = fromMaybe "" t
 
-
+tryInsertPost :: PostStub -> Maybe FileData -> ExceptT Text IO Int
+tryInsertPost stub file = case file of
+    Just f -> do
+        saved <- saveFile f
+        liftIO $ insertFile saved >>= insertPostWithFile stub
+    Nothing -> do
+        liftIO $ insertPost stub 
 
 createPost :: S.ActionM ()
 createPost = do 
@@ -54,18 +62,9 @@ createPost = do
     postSubject <- maybeParam "subject"
     postText    <- maybeParam "comment" 
     postFile    <- maybeFile
-    case tryMakePost postAuthor postEmail postSubject postText of
+    result <- liftIO $ runExceptT $ do 
+        liftEither $ tryMkStub postAuthor postEmail postSubject postText
+        >>= flip tryInsertPost postFile
+    case result of
         Left msg -> blaze $ errorView msg
-        Right stub -> do
-            files <- S.files
-            case postFile of
-                Just f -> do
-                    uploaded <- liftIO $ saveFile f
-                    case uploaded of 
-                        Left msg -> blaze $ errorView msg
-                        Right file -> do
-                            postNumber <- liftIO $ insertFile file >>= insertPostWithFile stub
-                            S.redirect "/"
-                Nothing -> do
-                    postNumber <- liftIO $ insertPost stub
-                    S.redirect "/"
+        Right postId -> S.redirect "/"
