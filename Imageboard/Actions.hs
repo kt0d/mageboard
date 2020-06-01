@@ -28,9 +28,9 @@ blaze = S.html . renderHtml
 maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
 maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$> S.files 
 
-tryMkStub :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Either Text PostStub
-tryMkStub a e s t
-    | postText    #< 5    = Left "Post text too short"
+tryMkStub :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Bool ->  Either Text PostStub
+tryMkStub a e s t hasFile
+    | postText    #< 5 && not hasFile = Left "Post text too short"
     | postText    #> 500  = Left "Post text too long"
     | postEmail   #> 320  = Left "Email too long"
     | postSubject #> 128  = Left "Subject too long"
@@ -63,7 +63,7 @@ createPost = do
     postText    <- maybeParam "comment" 
     postFile    <- maybeFile
     result <- liftIO $ runExceptT $ do 
-        liftEither $ tryMkStub postAuthor postEmail postSubject postText
+        liftEither $ tryMkStub postAuthor postEmail postSubject postText (isJust postFile)
         >>= flip tryInsertPost postFile
     case result of
         Left msg -> blaze $ errorView msg
