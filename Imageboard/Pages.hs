@@ -57,37 +57,35 @@ postView :: Post -> H.Html
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post" $ do
         H.div ! A.class_ "post-header" $ do
-            H.span ! A.class_ "post-subject" $ H.text $ postSubject
+            H.span ! A.class_ "post-subject" $ H.toHtml $ postSubject
             space
             H.span ! A.class_ "post-name" $ do 
-                (if T.null postEmail then id else emailTag) $ H.text $ postAuthor
+                (if T.null postEmail then id else emailTag) $ H.toHtml $ postAuthor
             space
             H.span ! A.class_ "post-date" $ 
-                H.time ! A.datetime (H.toValue postDate) $ (H.string postDate)
+                H.time ! A.datetime (H.toValue postDate) $ (H.toHtml postDate)
             space
             H.span ! A.class_ "post-number" $ 
                 H.a ! A.href (mconcat ["#", postNumber]) $ 
                     H.string $ mconcat ["No.", show $ number p]
         foldMap imageBox (file p)
+        H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
-        emailTag = H.a ! A.class_ "post-email" ! A.href (H.textValue $ mconcat ["mailto:", postEmail])
-        postNumber = H.preEscapedStringValue $ mconcat ["postid", show $ number p]
+        emailTag = H.a ! A.class_ "post-email" ! A.href (H.toValue $ mconcat ["mailto:", postEmail])
+        postNumber = H.preEscapedToValue $ mconcat ["postid", show $ number p]
         postDate = formatTime defaultTimeLocale "%F %T" (date p)
         postAuthor = author $ content p
         postEmail = email $ content p
         postSubject = subject $ content p
-        postText = case postEmail of
-            "nofo" -> escapeHTML $ text $ content p
-            _ -> formatPost $ text $ content p
-
+        postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
 boardView :: [Post] -> H.Html
 boardView ps = commonHtml $ do 
     postForm
     H.hr 
     H.div ! A.class_ "content" $ do
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ fmap postView ps
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> ps
     H.hr
 
 errorView :: Text -> H.Html
