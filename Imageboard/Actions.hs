@@ -48,11 +48,16 @@ tryMkStub a e s t hasFile
         postText    = fromMaybe "" t
 
 tryInsertPost :: PostStub -> Maybe FileData -> ExceptT Text IO Int
-tryInsertPost stub file = case file of
+tryInsertPost stub fdata = case fdata of
     Just f -> do
-        saved <- saveFile f
-        liftIO $ insertFile saved >>= insertPostWithFile stub
-    Nothing -> do
+        (file, path) <- liftEither $ tryMkFile f
+        exists <- liftIO $ getFileId $ filename file
+        case exists of
+            Just id -> liftIO $ insertPostWithFile stub id
+            Nothing -> do
+                saveFile file f path
+                liftIO $ insertFile file >>= insertPostWithFile stub
+    Nothing -> 
         liftIO $ insertPost stub 
 
 createPost :: S.ActionM ()

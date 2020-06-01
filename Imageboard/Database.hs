@@ -4,13 +4,16 @@ module Imageboard.Database (
     insertPost,
     insertFile,
     insertPostWithFile,
-    getPosts
+    getPosts,
+    getFileId
 ) where
 import Control.Monad (liftM5, liftM)
 import Data.Text (Text)
+import Data.Maybe (listToMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
+import Database.SQLite.Simple (NamedParam((:=)))
 import qualified Database.SQLite.Simple.FromRow as DB (fieldWith)
 import qualified Database.SQLite.Simple.FromField as DB (FieldParser, fieldData, returnError)
 import qualified Database.SQLite.Simple.Ok as DB (Ok(..))
@@ -41,8 +44,8 @@ instance DB.FromRow Post where
     fromRow = Post  <$> DB.field 
                     <*> DB.fieldWith parseDate 
                     <*> (Stub <$> DB.field <*> DB.field <*> DB.field <*> DB.field)
-                    <*> (liftM5 File <$> DB.field <*> DB.field <*> DB.field <*> (Just <$> DB.field) <*> (Just <$> DB.field))
-            
+                    <*> (liftM5 File <$> DB.field <*> DB.field <*> DB.field <*> 
+                            (Just <$> DB.field) <*> (Just <$> DB.field))
 
 setupDb :: IO ()
 setupDb = do
@@ -55,33 +58,39 @@ insertPost :: PostStub -> IO Int
 insertPost s = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
                         \VALUES (:name, :email, :subject, :text)" 
-                        [ ":name"     DB.:= author s
-                        , ":email"    DB.:= email s
-                        , ":subject"  DB.:= subject s
-                        , ":text"     DB.:= text s]
+                        [ ":name"       := author s
+                        , ":email"      := email s
+                        , ":subject"    := subject s
+                        , ":text"       := text s]
     fromIntegral <$> DB.lastInsertRowId c
 
 insertFile :: File -> IO Int
 insertFile f = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Files (Name, Extension, Size, Width, Height) \
                         \VALUES (:name, :ext, :size, :width, :height)" 
-                        [ ":name"   DB.:= filename f
-                        , ":ext"    DB.:= extension f
-                        , ":size"   DB.:= size f
-                        , ":width"  DB.:= width f
-                        , ":height" DB.:= height f]
+                        [ ":name"   := filename f
+                        , ":ext"    := extension f
+                        , ":size"   := size f
+                        , ":width"  := width f
+                        , ":height" := height f]
     fromIntegral <$> DB.lastInsertRowId c
 
 insertPostWithFile :: PostStub -> Int -> IO Int
 insertPostWithFile s f = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId) \
                         \VALUES (:name, :email, :subject, :text, :fileid)" 
-                        [ ":name"     DB.:= author s
-                        , ":email"    DB.:= email s
-                        , ":subject"  DB.:= subject s
-                        , ":text"     DB.:= text s
-                        , ":fileid"   DB.:= f]
+                        [ ":name"       := author s
+                        , ":email"      := email s
+                        , ":subject"    := subject s
+                        , ":text"       := text s
+                        , ":fileid"     := f]
     fromIntegral <$> DB.lastInsertRowId c
+
+getFileId :: Text -> IO (Maybe Int)
+getFileId name = DB.withConnection postsDb $ \c -> do
+    l <- DB.queryNamed c "SELECT Id FROM Files WHERE Name = :name" 
+        [":name" := name] :: IO [DB.Only Int]
+    return $ DB.fromOnly <$> listToMaybe l
 
 getPosts :: IO [Post]
 getPosts = DB.withConnection postsDb $ \c ->

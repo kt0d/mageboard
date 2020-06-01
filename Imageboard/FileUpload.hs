@@ -2,6 +2,7 @@
 {-# LANGUAGE ViewPatterns #-}    
 module Imageboard.FileUpload (
     saveFile,
+    tryMkFile,
     FileData
 ) where
 import Control.Monad.Except
@@ -41,8 +42,8 @@ recognizeFormat b
         isAfter n = flip B.isPrefixOf (B.drop n b)
         is = isAfter 0
 
-saveFile :: FileData -> ExceptT Text IO File
-saveFile f = do
+tryMkFile :: FileData -> Either Text (File, FilePath)
+tryMkFile f = do
     let bytes = N.fileContent f
     let len = B.length bytes
     if len > 16777216 then throwError "File is too big"
@@ -50,10 +51,15 @@ saveFile f = do
         let mime = N.fileContentType f
         format <- liftEither $ recognizeFormat bytes
         let baseName = (show $ hashFile bytes)
-        liftIO $ B.writeFile (uploadDir ++ baseName ++ "." ++ T.unpack format) bytes
-        return $ File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing Nothing
+        return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing Nothing,
+                baseName ++ "." ++ T.unpack format)
 
-    
+setDimensions :: File -> FilePath -> IO File
+setDimensions = undefined
 
+makeThumbnail :: File -> FilePath -> IO ()
+makeThumbnail = undefined
 
-
+saveFile :: File -> FileData -> FilePath -> ExceptT Text IO ()
+saveFile f fdata path = do
+    liftIO $ B.writeFile (uploadDir ++ path) $ N.fileContent fdata    
