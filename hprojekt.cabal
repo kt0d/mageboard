@@ -24,6 +24,7 @@ executable hprojekt
     Imageboard.Database
     Imageboard.Types
     Imageboard.Markup
+    Imageboard.Markup.PCRE2
     Imageboard.FileUpload
   -- other-extensions:
   build-depends:       
@@ -36,8 +37,6 @@ executable hprojekt
     direct-sqlite,
     scotty,
     process,
-    attoparsec,
-    replace-attoparsec,
     time,
     wai-extra,
     wai-middleware-static,
@@ -47,4 +46,5 @@ executable hprojekt
 
   -- hs-source-dirs:
   default-language:    Haskell2010
-  GHC-options:         -Wall -threaded
+  GHC-options:         -Wall -debug -dcore-lint
+  extra-libraries:     pcre2-16

@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS Files (
     CHECK(Width IS NULL == Height IS NULL)
 );
 
-CREATE TABLE GlobalConfig AS VALUES
-()
+-- CREATE TABLE GlobalConfig AS VALUES
+-- ()
 
 --- INDEXES --------------------------------------------------------------------
 
