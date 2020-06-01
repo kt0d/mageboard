@@ -47,6 +47,12 @@ postForm = H.fieldset $ H.form ! A.id "postform" !
     H.input ! A.type_ "submit" ! A.value "Post"
     H.br
 
+imageBox :: File -> H.Html
+imageBox f = do
+    let link = H.toValue $ mconcat ["/media/", filename f, ".", extension f]
+    H.a ! A.type_ "blank" ! A.href link  $ 
+        H.img ! A.class_ "post-file-thumbnail" ! A.width "200" ! A.height "200" ! A.src link
+
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post" $ do
@@ -62,11 +68,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-number" $ 
                 H.a ! A.href (mconcat ["#", postNumber]) $ 
                     H.string $ mconcat ["No.", show $ number p]
-        flip (maybe mempty) (file p) $ \f -> do
-            let link = H.preEscapedTextValue $ mconcat ["/media/", filename f, ".", extension f]
-            H.a ! A.type_ "blank" ! A.href link  $ 
-                H.img ! A.class_ "post-file-thumbnail" ! A.width "200" ! A.height "200" ! A.src link
-        H.div ! A.class_ "post-comment" $ H.preEscapedText postText
+        foldMap imageBox (file p)
     H.br
     where  
         emailTag = H.a ! A.class_ "post-email" ! A.href (H.textValue $ mconcat ["mailto:", postEmail])
