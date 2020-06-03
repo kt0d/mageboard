@@ -11,12 +11,12 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as B
-import qualified Web.Scotty as S
 import qualified Network.Wai.Parse as N (FileInfo(..))
 import qualified Crypto.Hash as H
 import Crypto.Hash.Algorithms (SHA512)
-import Debug.Trace
-
+import System.Process as P
+import System.IO as IO
+import System.Exit (ExitCode(..))
 import Imageboard.Types (File(..), FileType(..))
 
 type FileData = N.FileInfo ByteString
@@ -57,18 +57,38 @@ tryMkFile f = do
     let len = B.length bytes
     if len > 16777216 then throwError "File is too big"
     else do
-        let mime = N.fileContentType f
         format <- liftEither $ recognizeFormat bytes
         let baseName = (show $ hashFile bytes) ++ toExtension format
-        return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing Nothing,
-                baseName)
+        return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) 
+            Nothing Nothing, baseName)
 
-setDimensions :: File -> FilePath -> IO File
-setDimensions = undefined
+getImgDimensions :: FilePath -> ExceptT Text IO (Int, Int)
+getImgDimensions path = do
+    (exit, out, _) <- liftIO $ P.readProcessWithExitCode "gm" 
+            ["identify", "-format", "%w %h", path++"[0]"] []
+    case exit of
+        ExitSuccess -> do
+            let [w,h] = map read $ words out
+            return (w,h)
+        ExitFailure code ->            
+            throwError $ "'gm identify' failed with code: " `T.append` (T.pack $ show code)
 
-makeThumbnail :: File -> FilePath -> IO ()
-makeThumbnail = undefined
 
-saveFile :: File -> FileData -> FilePath -> ExceptT Text IO ()
+processFile :: File -> FilePath -> ExceptT Text IO File
+processFile f = case ext f of
+    JPG  -> doProcess
+    PNG  -> doProcess
+    GIF  -> doProcess
+    WEBM -> const $ pure f
+    MP4  -> const $ pure f
+    MP3  -> const $ pure f
+    OGG  -> const $ pure f
+    where 
+        doProcess path = do
+            (w,h) <- getImgDimensions (uploadDir ++ path)
+            return $ f { width = Just w, height = Just h}
+
+saveFile :: File -> FileData -> FilePath -> ExceptT Text IO File
 saveFile f fdata path = do
-    liftIO $ B.writeFile (uploadDir ++ path) $ N.fileContent fdata    
+    liftIO $ B.writeFile (uploadDir ++ path) $ N.fileContent fdata
+    processFile f path
