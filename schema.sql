@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS Files (
     Height          INTEGER                 DEFAULT NULL,
     
     PRIMARY KEY (Id),
-    CHECK(Width IS NULL == Height IS NULL)
+    CHECK((Width IS NULL) == (Height IS NULL))
 );
 
 -- CREATE TABLE GlobalConfig AS VALUES
