@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS Posts (
 
 CREATE TABLE IF NOT EXISTS Files (
     Id              INTEGER     NOT NULL,
-    Name            TEXT        NOT NULL    UNIQUE              CHECK(length(Name) == 128),
-    Extension       TEXT        NOT NULL                        CHECK(length(Extension) between 1 and 4),
+    Name            TEXT        NOT NULL    UNIQUE              CHECK(length(Name) between 130 and 133),
+    Extension       INTEGER     NOT NULL,
     Size            INTEGER     NOT NULL                        CHECK(Size between 1 and 16777216),
     Width           INTEGER                 DEFAULT NULL,
     Height          INTEGER                 DEFAULT NULL,

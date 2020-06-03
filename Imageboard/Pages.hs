@@ -49,7 +49,7 @@ postForm = H.fieldset $ H.form ! A.id "postform" !
 
 imageBox :: File -> H.Html
 imageBox f = do
-    let link = H.toValue $ mconcat ["/media/", filename f, ".", extension f]
+    let link = H.toValue $ mconcat ["/media/", filename f]
     H.a ! A.type_ "blank" ! A.href link  $ 
         H.img ! A.class_ "post-file-thumbnail" ! A.width "200" ! A.height "200" ! A.src link
 

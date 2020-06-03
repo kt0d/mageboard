@@ -14,7 +14,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
-import qualified Database.SQLite.Simple.FromRow as DB (fieldWith)
+import qualified Database.SQLite.Simple.FromRow as DB (fieldWith, RowParser)
 import qualified Database.SQLite.Simple.FromField as DB (FieldParser, fieldData, returnError)
 import qualified Database.SQLite.Simple.Ok as DB (Ok(..))
 import qualified Database.SQLite.Simple.Time.Implementation as DB
@@ -43,9 +43,15 @@ parseDate f = case DB.fieldData f of
 instance DB.FromRow Post where
     fromRow = Post  <$> DB.field 
                     <*> DB.fieldWith parseDate 
-                    <*> (Stub <$> DB.field <*> DB.field <*> DB.field <*> DB.field)
-                    <*> (liftM5 File <$> DB.field <*> DB.field <*> DB.field <*> 
-                            (Just <$> DB.field) <*> (Just <$> DB.field))
+                    <*> (Stub   <$> DB.field 
+                                <*> DB.field 
+                                <*> DB.field 
+                                <*> DB.field)
+                    <*> (liftM5 File    <$> DB.field 
+                                        <*> ((toEnum <$>) <$> DB.field) 
+                                        <*> DB.field 
+                                        <*> (Just <$> DB.field) 
+                                        <*> (Just <$> DB.field))
 
 setupDb :: IO ()
 setupDb = do
@@ -69,7 +75,7 @@ insertFile f = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Files (Name, Extension, Size, Width, Height) \
                         \VALUES (:name, :ext, :size, :width, :height)" 
                         [ ":name"   := filename f
-                        , ":ext"    := extension f
+                        , ":ext"    := (fromEnum $ ext f)
                         , ":size"   := size f
                         , ":width"  := width f
                         , ":height" := height f]

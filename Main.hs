@@ -16,7 +16,7 @@ main = do
     setupDb
     S.scotty 3000 $ do
         S.middleware Wai.logStdoutDev
-        S.middleware $ Wai.staticPolicy $ Wai.noDots Wai.>-> Wai.addBase "static"
+        S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
         S.get "/" $ do
             posts <- liftIO getPosts
             blaze $ boardView posts

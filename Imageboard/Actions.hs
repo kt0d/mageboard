@@ -30,12 +30,12 @@ maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$
 
 tryMkStub :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Bool ->  Either Text PostStub
 tryMkStub a e s t hasFile
-    | postText    #< 5 && not hasFile = Left "Post text too short"
-    | postText    #> 500  = Left "Post text too long"
-    | postEmail   #> 320  = Left "Email too long"
-    | postSubject #> 128  = Left "Subject too long"
-    | postAuthor  #> 64   = Left "Author name too long"
-    | T.count "\n" postText > 20 = Left "Too many newlines in post text"
+    | postText    #< 5 && not hasFile   = Left "Post text too short"
+    | postText    #> 500                = Left "Post text too long"
+    | postEmail   #> 320                = Left "Email too long"
+    | postSubject #> 128                = Left "Subject too long"
+    | postAuthor  #> 64                 = Left "Author name too long"
+    | T.count "\n" postText > 20        = Left "Too many newlines in post text"
     | otherwise = Right $ Stub postAuthor postEmail postSubject postText
     where
         x #< y = T.compareLength x y == LT
@@ -68,8 +68,8 @@ createPost = do
     postText    <- maybeParam "comment" 
     postFile    <- maybeFile
     result <- liftIO $ runExceptT $ do 
-        liftEither $ tryMkStub postAuthor postEmail postSubject postText (isJust postFile)
-        >>= flip tryInsertPost postFile
+        stub <- liftEither $ tryMkStub postAuthor postEmail postSubject postText (isJust postFile)
+        tryInsertPost stub postFile
     case result of
         Left msg -> blaze $ errorView msg
         Right postId -> S.redirect "/"

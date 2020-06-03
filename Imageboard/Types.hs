@@ -2,12 +2,29 @@ module Imageboard.Types (
     Post(..),
     PostStub(..),
     File(..),
+    FileType(..)
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 
-data FileType = Image | Video | Audio | Document
-    deriving (Show)
+data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG deriving (Show, Bounded)
+
+instance Enum FileType where
+    fromEnum    JPG     = 0
+    fromEnum    PNG     = 1
+    fromEnum    GIF     = 2
+    fromEnum    WEBM    = 3
+    fromEnum    MP4     = 4
+    fromEnum    MP3     = 5
+    fromEnum    OGG     = 6
+
+    toEnum      0       = JPG
+    toEnum      1       = PNG
+    toEnum      2       = GIF
+    toEnum      3       = WEBM
+    toEnum      4       = MP4
+    toEnum      5       = MP3
+    toEnum      6       = OGG
 
 data Post = Post {
     number :: Int,
@@ -25,7 +42,7 @@ data PostStub = Stub {
 
 data File = File {
     filename :: Text,
-    extension :: Text,
+    ext :: FileType,
     size :: Int,
     width :: Maybe Int,
     height :: Maybe Int

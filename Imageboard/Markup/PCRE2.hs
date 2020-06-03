@@ -10,16 +10,13 @@ module Imageboard.Markup.PCRE2 (
 ) where
 import Control.Monad
 import Foreign (Word32, Word16, (.|.), 
-    Ptr, nullPtr, peek, poke,
+    Ptr, nullPtr, peek, with,
     alloca, allocaArray, mallocArray, free)
 import Foreign.C (CInt(..), CSize(..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Foreign as TF
-import Data.Text.IO as T
 import System.IO.Unsafe (unsafePerformIO)
-import Foreign.ForeignPtr
-import Debug.Trace 
 
 data Code -- PCRE2_CODE
 type CText = Ptr Word16 -- PCRE2_SPTR aka const PCRE2_UCHAR*
@@ -81,8 +78,7 @@ getErrorText err = let bufflen = 256 in
 substituteInternal :: (CText, CSize) -> RegexReplace -> IO (CText, CSize)
 substituteInternal (subject', subjectLen) (REReplace p r) = 
     useAsPtr r $ \replac' replacLen -> 
-    alloca $ \outLen' -> do
-        poke outLen' 0
+    with 0 $ \outLen' -> do
         regex <- compilePattern p 
         ret <- c_pcre2_substitute regex 
             subject' subjectLen 0 

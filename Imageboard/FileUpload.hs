@@ -6,6 +6,7 @@ module Imageboard.FileUpload (
     FileData
 ) where
 import Control.Monad.Except
+import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.ByteString.Lazy (ByteString)
@@ -16,7 +17,7 @@ import qualified Crypto.Hash as H
 import Crypto.Hash.Algorithms (SHA512)
 import Debug.Trace
 
-import Imageboard.Types (File(..))
+import Imageboard.Types (File(..), FileType(..))
 
 type FileData = N.FileInfo ByteString
 
@@ -26,17 +27,25 @@ uploadDir = "static/media/"
 hashFile :: ByteString -> H.Digest SHA512
 hashFile = H.hashlazy
 
+toExtension :: IsString a => FileType -> a
+toExtension JPG = ".jpg"
+toExtension PNG = ".png"
+toExtension GIF = ".gif"
+toExtension WEBM = ".webm"
+toExtension MP4 = ".mp4"
+toExtension MP3 = ".mp3"
+toExtension OGG = ".ogg"
+
 -- https://www.garykessler.net/library/file_sigs.html
-recognizeFormat :: ByteString -> Either Text Text
+recognizeFormat :: ByteString -> Either Text FileType
 recognizeFormat b
-    | is "\xFF\xD8"                         = Right "jpg"
-    | is "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A" = Right "png"
-    | is "GIF87a" || is "GIF89a"            = Right "gif"
-    | is "%PDF"                             = Right "pdf"
-    | is "\x1A\x45\xDF\xA3"                 = Right "webm"
-    | isAfter 4 "ftypMSNV"                  = Right "mp4"
-    | is "ID3"                              = Right "mp3"
-    | is "OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00" = Right "ogg"
+    | is "\xFF\xD8"                         = Right JPG
+    | is "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A" = Right PNG
+    | is "GIF87a" || is "GIF89a"            = Right GIF
+    | is "\x1A\x45\xDF\xA3"                 = Right WEBM
+    | isAfter 4 "ftypMSNV"                  = Right MP4
+    | is "ID3"                              = Right MP3
+    | is "OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00" = Right OGG
     | otherwise = Left "Unsupported file format"
     where 
         isAfter n = flip B.isPrefixOf (B.drop n b)
@@ -50,9 +59,9 @@ tryMkFile f = do
     else do
         let mime = N.fileContentType f
         format <- liftEither $ recognizeFormat bytes
-        let baseName = (show $ hashFile bytes)
+        let baseName = (show $ hashFile bytes) ++ toExtension format
         return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing Nothing,
-                baseName ++ "." ++ T.unpack format)
+                baseName)
 
 setDimensions :: File -> FilePath -> IO File
 setDimensions = undefined
