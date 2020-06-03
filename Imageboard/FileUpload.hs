@@ -24,6 +24,9 @@ type FileData = N.FileInfo ByteString
 uploadDir :: FilePath
 uploadDir = "static/media/"
 
+thumbnailDir :: FilePath
+thumbnailDir = "static/media/thumb/"
+
 hashFile :: ByteString -> H.Digest SHA512
 hashFile = H.hashlazy
 
@@ -73,6 +76,15 @@ getImgDimensions path = do
         ExitFailure code ->            
             throwError $ "'gm identify' failed with code: " `T.append` (T.pack $ show code)
 
+mkImageThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
+mkImageThumbnail path toPath = do
+    (exit, _, _) <- liftIO $ P.readProcessWithExitCode "gm" 
+            ["convert", "-strip", "-filter", "Box", "-thumbnail", "200x200"
+            , path ++ "[0]", toPath] []
+    case exit of
+        ExitSuccess -> return ()
+        ExitFailure code ->            
+            throwError $ "'gm convert' failed with code: " `T.append` (T.pack $ show code)
 
 processFile :: File -> FilePath -> ExceptT Text IO File
 processFile f = case ext f of
@@ -86,6 +98,7 @@ processFile f = case ext f of
     where 
         doProcess path = do
             (w,h) <- getImgDimensions (uploadDir ++ path)
+            mkImageThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
             return $ f { width = Just w, height = Just h}
 
 saveFile :: File -> FileData -> FilePath -> ExceptT Text IO File

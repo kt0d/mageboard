@@ -55,8 +55,8 @@ tryInsertPost stub fdata = case fdata of
         case exists of
             Just id -> liftIO $ insertPostWithFile stub id
             Nothing -> do
-                saveFile file f path
-                liftIO $ insertFile file >>= insertPostWithFile stub
+                newF <- saveFile file f path
+                liftIO $ insertFile newF >>= insertPostWithFile stub
     Nothing -> 
         liftIO $ insertPost stub 
 
