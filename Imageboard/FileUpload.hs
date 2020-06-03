@@ -76,8 +76,8 @@ getImgDimensions path = do
         ExitFailure code ->            
             throwError $ "'gm identify' failed with code: " `T.append` (T.pack $ show code)
 
-mkImageThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
-mkImageThumbnail path toPath = do
+mkImgThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
+mkImgThumbnail path toPath = do
     (exit, _, _) <- liftIO $ P.readProcessWithExitCode "gm" 
             ["convert", "-strip", "-filter", "Box", "-thumbnail", "200x200"
             , path ++ "[0]", toPath] []
@@ -86,20 +86,47 @@ mkImageThumbnail path toPath = do
         ExitFailure code ->            
             throwError $ "'gm convert' failed with code: " `T.append` (T.pack $ show code)
 
+getVidDimensions :: FilePath -> ExceptT Text IO Dimensions
+getVidDimensions path = do
+    (exit, out, _) <- liftIO $ P.readProcessWithExitCode "ffprobe"
+            ["-v", "-8", "-show_entries", "stream=width,height",
+             "-of", "csv=p=0:s=\\ ",   "-select_streams", "v:0", path] []
+    case exit of
+        ExitSuccess -> do
+            let [w,h] = map read $ words out
+            return $ Dim w h
+        ExitFailure code ->            
+            throwError $ "'ffprobe' failed with code: " `T.append` (T.pack $ show code)         
+
+mkVidThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
+mkVidThumbnail path toPath = do
+    (exit, _, _) <- liftIO $ P.readProcessWithExitCode "ffmpeg" 
+            ["-v", "-8", "-i", path, "-f", "mjpeg", "-vframes", "1", 
+            "-vf", "scale=w=200:h=200:force_original_aspect_ratio=decrease", "-y", toPath ++ ".jpg"] []
+    case exit of
+        ExitSuccess -> return ()
+        ExitFailure code ->            
+            throwError $ "'gm convert' failed with code: " `T.append` (T.pack $ show code)
+
 processFile :: File -> FilePath -> ExceptT Text IO File
 processFile f = case ext f of
-    JPG  -> doProcess
-    PNG  -> doProcess
-    GIF  -> doProcess
-    WEBM -> const $ pure f
-    MP4  -> const $ pure f
+    JPG  -> doImg
+    PNG  -> doImg
+    GIF  -> doImg
+    WEBM -> doVid 
+    MP4  -> doVid
     MP3  -> const $ pure f
     OGG  -> const $ pure f
     where 
-        doProcess path = do
+        doImg path = do
             dims <- getImgDimensions (uploadDir ++ path)
-            mkImageThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
+            mkImgThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
             return $ f { dim = Just dims}
+        doVid path = do
+            dims <- getVidDimensions (uploadDir ++ path)
+            mkVidThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
+            return $ f { dim = Just dims}
+
 
 saveFile :: File -> FileData -> FilePath -> ExceptT Text IO File
 saveFile f fdata path = do

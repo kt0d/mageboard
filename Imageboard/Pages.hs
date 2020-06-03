@@ -57,7 +57,7 @@ thumbnailDim (Dim w h)
 imageBox :: File -> H.Html
 imageBox f = do
     let link = H.toValue $ mconcat ["/media/", filename f]
-    let thumbLink = H.toValue $ mconcat ["/media/thumb/", filename f]
+    let thumbLink = H.toValue $ mconcat ["/media/thumb/", if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
     let (Dim w h) = fromMaybe (Dim 0 0) $ thumbnailDim <$> dim f
     H.a ! A.type_ "blank" ! A.href link  $ 
         H.img ! A.class_ "post-file-thumbnail" ! 
