@@ -4,7 +4,6 @@ module Imageboard.Pages (
     errorView
 ) where
 import Data.Maybe (fromMaybe)
-import Control.Monad (liftM2)
 import Data.Text (Text)
 import Data.Text as T
 import Data.List as List
@@ -49,19 +48,20 @@ postForm = H.fieldset $ H.form ! A.id "postform" !
     H.input ! A.type_ "submit" ! A.value "Post"
     H.br
 
-thumbnailDim :: Int -> Int -> (Int, Int)
-thumbnailDim w h 
-    | w <= 200 && h <= 200 = (w, h)
-    | w > h = (200, (200*h) `quot` w)
-    | otherwise = ((200*w) `quot` h, 200)
+thumbnailDim :: Dimensions -> Dimensions
+thumbnailDim (Dim w h)
+    | w <= 200 && h <= 200  = Dim w h
+    | w > h                 = Dim 200 $ (200*h) `quot` w
+    | otherwise             = flip Dim 200 $ (200*w) `quot` h
 
 imageBox :: File -> H.Html
 imageBox f = do
     let link = H.toValue $ mconcat ["/media/", filename f]
     let thumbLink = H.toValue $ mconcat ["/media/thumb/", filename f]
-    let (w,h) = fromMaybe (0,0) $ liftM2 thumbnailDim (width f) (height f)
+    let (Dim w h) = fromMaybe (Dim 0 0) $ thumbnailDim <$> dim f
     H.a ! A.type_ "blank" ! A.href link  $ 
-        H.img ! A.class_ "post-file-thumbnail" ! A.width (H.toValue w) ! A.height (H.toValue h) ! A.src thumbLink
+        H.img ! A.class_ "post-file-thumbnail" ! 
+            A.width (H.toValue w) ! A.height (H.toValue h) ! A.src thumbLink
 
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do

@@ -7,7 +7,7 @@ module Imageboard.Database (
     getPosts,
     getFileId
 ) where
-import Control.Monad (liftM5, liftM)
+import Control.Monad (liftM2, liftM4, liftM)
 import Data.Text (Text)
 import Data.Maybe (listToMaybe)
 import qualified Data.Text as T
@@ -21,7 +21,7 @@ import qualified Database.SQLite.Simple.Time.Implementation as DB
 import qualified Database.SQLite3 as DirectDB (open, close, exec)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-
+import Debug.Trace
 import Imageboard.Types
 
 postsDb :: FilePath
@@ -47,11 +47,11 @@ instance DB.FromRow Post where
                                 <*> DB.field 
                                 <*> DB.field 
                                 <*> DB.field)
-                    <*> (liftM5 File    <$> DB.field 
+                    <*> (liftM4 File    <$> DB.field 
                                         <*> ((toEnum <$>) <$> DB.field) 
                                         <*> DB.field 
-                                        <*> (Just <$> DB.field) 
-                                        <*> (Just <$> DB.field))
+                                        <*> (Just <$> (liftM2 Dim <$> DB.field
+                                                                <*> DB.field)))
 
 setupDb :: IO ()
 setupDb = do
@@ -77,8 +77,8 @@ insertFile f = DB.withConnection postsDb $ \c -> do
                         [ ":name"   := filename f
                         , ":ext"    := (fromEnum $ ext f)
                         , ":size"   := size f
-                        , ":width"  := width f
-                        , ":height" := height f]
+                        , ":width"  := width <$> dim f
+                        , ":height" := height <$> dim f]
     fromIntegral <$> DB.lastInsertRowId c
 
 insertPostWithFile :: PostStub -> Int -> IO Int

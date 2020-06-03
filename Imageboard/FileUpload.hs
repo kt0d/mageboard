@@ -17,7 +17,7 @@ import Crypto.Hash.Algorithms (SHA512)
 import System.Process as P
 import System.IO as IO
 import System.Exit (ExitCode(..))
-import Imageboard.Types (File(..), FileType(..))
+import Imageboard.Types (File(..), FileType(..), Dimensions(..))
 
 type FileData = N.FileInfo ByteString
 
@@ -63,16 +63,16 @@ tryMkFile f = do
         format <- liftEither $ recognizeFormat bytes
         let baseName = (show $ hashFile bytes) ++ toExtension format
         return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) 
-            Nothing Nothing, baseName)
+            Nothing, baseName)
 
-getImgDimensions :: FilePath -> ExceptT Text IO (Int, Int)
+getImgDimensions :: FilePath -> ExceptT Text IO Dimensions
 getImgDimensions path = do
     (exit, out, _) <- liftIO $ P.readProcessWithExitCode "gm" 
             ["identify", "-format", "%w %h", path++"[0]"] []
     case exit of
         ExitSuccess -> do
             let [w,h] = map read $ words out
-            return (w,h)
+            return $ Dim w h
         ExitFailure code ->            
             throwError $ "'gm identify' failed with code: " `T.append` (T.pack $ show code)
 
@@ -97,9 +97,9 @@ processFile f = case ext f of
     OGG  -> const $ pure f
     where 
         doProcess path = do
-            (w,h) <- getImgDimensions (uploadDir ++ path)
+            dims <- getImgDimensions (uploadDir ++ path)
             mkImageThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
-            return $ f { width = Just w, height = Just h}
+            return $ f { dim = Just dims}
 
 saveFile :: File -> FileData -> FilePath -> ExceptT Text IO File
 saveFile f fdata path = do

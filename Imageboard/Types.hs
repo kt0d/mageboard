@@ -2,12 +2,14 @@ module Imageboard.Types (
     Post(..),
     PostStub(..),
     File(..),
-    FileType(..)
+    FileType(..),
+    Dimensions(..)
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 
 data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG deriving (Show, Bounded)
+data Dimensions = Dim { width :: Int, height :: Int} deriving (Show)
 
 instance Enum FileType where
     fromEnum    JPG     = 0
@@ -44,6 +46,5 @@ data File = File {
     filename :: Text,
     ext :: FileType,
     size :: Int,
-    width :: Maybe Int,
-    height :: Maybe Int
+    dim :: Maybe Dimensions
 } deriving (Show)
