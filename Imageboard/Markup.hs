@@ -5,9 +5,7 @@ module Imageboard.Markup (
     escapeHTML
 ) where
 import Data.Text (Text)
-import Data.Text as T
-import Data.Text.Lazy.Builder (Builder, toLazyText)
-import qualified Data.Text.Lazy.Builder as B
+import qualified Data.Text as T
 import Imageboard.Markup.PCRE2(gsub, RegexReplace(..))
 
 -- | Escape predefined XML entities in a text value

@@ -14,8 +14,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Network.Wai.Parse as N (FileInfo(..))
 import qualified Crypto.Hash as H
 import Crypto.Hash.Algorithms (SHA512)
-import System.Process as P
-import System.IO as IO
+import qualified System.Process as P
 import System.Exit (ExitCode(..))
 import Imageboard.Types (File(..), FileType(..), Dimensions(..))
 
@@ -63,8 +62,8 @@ tryMkFile f = do
     else do
         format <- liftEither $ recognizeFormat bytes
         let baseName = (show $ hashFile bytes) ++ toExtension format
-        return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) 
-            Nothing, baseName)
+        return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing
+            , baseName)
 
 getImgDimensions :: FilePath -> ExceptT Text IO Dimensions
 getImgDimensions path = do

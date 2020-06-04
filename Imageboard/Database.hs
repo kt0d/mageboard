@@ -7,14 +7,14 @@ module Imageboard.Database (
     getPosts,
     getFileId
 ) where
-import Control.Monad (liftM2, liftM4, liftM)
+import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
 import Data.Maybe (listToMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
-import qualified Database.SQLite.Simple.FromRow as DB (fieldWith, RowParser)
+import qualified Database.SQLite.Simple.FromRow as DB (fieldWith)
 import qualified Database.SQLite.Simple.FromField as DB (FieldParser, fieldData, returnError)
 import qualified Database.SQLite.Simple.Ok as DB (Ok(..))
 import qualified Database.SQLite.Simple.Time.Implementation as DB
@@ -43,15 +43,18 @@ parseDate f = case DB.fieldData f of
 instance DB.FromRow Post where
     fromRow = Post  <$> DB.field 
                     <*> DB.fieldWith parseDate 
-                    <*> (Stub   <$> DB.field 
-                                <*> DB.field 
-                                <*> DB.field 
-                                <*> DB.field)
-                    <*> (liftM4 File    <$> DB.field 
-                                        <*> ((toEnum <$>) <$> DB.field) 
-                                        <*> DB.field 
-                                        <*> (Just <$> (liftM2 Dim <$> DB.field
-                                                                <*> DB.field)))
+                    <*> (Stub   
+                        <$> DB.field 
+                        <*> DB.field 
+                        <*> DB.field 
+                        <*> DB.field)
+                    <*> (liftM4 File    
+                        <$> DB.field 
+                        <*> ((toEnum <$>) <$> DB.field) 
+                        <*> DB.field 
+                        <*> (Just <$> (liftM2 Dim 
+                            <$> DB.field
+                            <*> DB.field)))
 
 setupDb :: IO ()
 setupDb = do

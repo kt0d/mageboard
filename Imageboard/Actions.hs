@@ -6,26 +6,25 @@ module Imageboard.Actions (
 import Control.Monad.Except
 import Data.Maybe
 import Data.Text (Text)
+import qualified Data.Text.Lazy as Lazy (Text)
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
-import Control.Monad
-import Control.Monad.Trans
-import qualified Network.HTTP.Types.Status as S
 import qualified Network.Wai.Parse as N (FileInfo(..))
 import qualified Web.Scotty as S
 import Text.Blaze.Html5 (Html)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
-
+import Debug.Trace
 import Imageboard.Database
 import Imageboard.Types
 import Imageboard.Pages (boardView, errorView)
 import Imageboard.FileUpload
 
-
 blaze :: Html -> S.ActionM ()
 blaze = S.html . renderHtml  
   
+maybeParam :: S.Parsable a => Lazy.Text -> S.ActionM (Maybe a)
 maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
+maybeFile :: S.ActionM (Maybe FileData)
 maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$> S.files 
 
 tryMkStub :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Bool ->  Either Text PostStub
@@ -48,14 +47,14 @@ tryMkStub a e s t hasFile
         postText    = fromMaybe "" t
 
 tryInsertPost :: PostStub -> Maybe FileData -> ExceptT Text IO Int
-tryInsertPost stub fdata = case fdata of
-    Just f -> do
-        (file, path) <- liftEither $ tryMkFile f
-        exists <- liftIO $ getFileId $ filename file
+tryInsertPost stub mdata = case mdata of
+    Just fdata -> do
+        (f, fPath) <- liftEither $ tryMkFile fdata
+        exists <- liftIO $ getFileId $ filename f
         case exists of
-            Just id -> liftIO $ insertPostWithFile stub id
+            Just fileId -> liftIO $ insertPostWithFile stub fileId
             Nothing -> do
-                newF <- saveFile file f path
+                newF <- saveFile f fdata fPath
                 liftIO $ insertFile newF >>= insertPostWithFile stub
     Nothing -> 
         liftIO $ insertPost stub 
@@ -72,4 +71,4 @@ createPost = do
         tryInsertPost stub postFile
     case result of
         Left msg -> blaze $ errorView msg
-        Right postId -> S.redirect "/"
+        Right _ -> S.redirect "/"

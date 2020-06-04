@@ -5,7 +5,7 @@ module Imageboard.Pages (
 ) where
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text as T
+import qualified Data.Text as T
 import Data.List as List
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
@@ -22,10 +22,10 @@ space :: H.Html
 space = "\n"
 
 commonHtml :: H.Html -> H.Html
-commonHtml content = H.docTypeHtml $ do
+commonHtml c = H.docTypeHtml $ do
     H.head $
         H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
-    H.body content
+    H.body c
 
 postForm :: H.Html
 postForm = H.fieldset $ H.form ! A.id "postform" ! 

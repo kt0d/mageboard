@@ -14,7 +14,6 @@ import Foreign (Word32, Word16, (.|.),
     alloca, allocaArray, mallocArray, free)
 import Foreign.C (CInt(..), CSize(..))
 import Data.Text (Text)
-import qualified Data.Text as T
 import qualified Data.Text.Foreign as TF
 import System.IO.Unsafe (unsafePerformIO)
 
