@@ -107,7 +107,7 @@ mkVidThumbnail path toPath = do
     case exit of
         ExitSuccess -> return ()
         ExitFailure code ->            
-            throwError $ "'gm convert' failed with code: " `T.append` (T.pack $ show code)
+            throwError $ "'ffmpeg' failed with code: " `T.append` (T.pack $ show code)
 
 processFile :: File -> FilePath -> ExceptT Text IO File
 processFile f = case ext f of
