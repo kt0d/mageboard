@@ -46,7 +46,8 @@ recognizeFormat b
     | is "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A" = Right PNG
     | is "GIF87a" || is "GIF89a"            = Right GIF
     | is "\x1A\x45\xDF\xA3"                 = Right WEBM
-    | isAfter 4 "ftypMSNV"                  = Right MP4
+    | isAfter 4 "ftypMSNV" = Right MP4
+    | isAfter 4 "ftypisom" = Right MP4
     | is "ID3"                              = Right MP3
     | is "OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00" = Right OGG
     | otherwise = Left "Unsupported file format"
