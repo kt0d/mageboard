@@ -77,6 +77,11 @@ div.post-comment {
     white-space: pre-wrap;
 }
 
+div.post-file-info {
+    font-size: 12px;
+    margin-top: -5px;
+}
+
 .invisible {
     display: none;
 }

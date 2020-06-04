@@ -3,18 +3,25 @@ module Imageboard.Types (
     PostStub(..),
     File(..),
     FileType(..),
-    isImage,
+    isImage, isAudio,
     Dimensions(..)
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 
-data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG deriving (Show, Bounded)
+data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG deriving (Show, Bounded, Eq)
+
 isImage :: FileType -> Bool
 isImage JPG = True
 isImage PNG = True
 isImage GIF = True
 isImage _ = False
+
+isAudio :: FileType -> Bool
+isAudio MP3 = True
+isAudio OGG = True
+isAudio _ = False
+
 data Dimensions = Dim { width :: Int, height :: Int} deriving (Show)
 
 instance Enum FileType where
@@ -33,6 +40,7 @@ instance Enum FileType where
     toEnum      4       = MP4
     toEnum      5       = MP3
     toEnum      6       = OGG
+    toEnum      _       = errorWithoutStackTrace "Enum.FileType: bad argument"
 
 data Post = Post {
     number :: Int,

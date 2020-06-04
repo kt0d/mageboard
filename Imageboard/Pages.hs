@@ -10,6 +10,7 @@ import Data.List as List
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
+import Text.Printf (printf)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Imageboard.Types
 import Imageboard.Markup
@@ -54,13 +55,35 @@ thumbnailDim (Dim w h)
     | w > h                 = Dim 200 $ (200*h) `quot` w
     | otherwise             = flip Dim 200 $ (200*w) `quot` h
 
-imageBox :: File -> H.Html
-imageBox f = do
+sizeFormat :: Int -> Text
+sizeFormat = T.pack . toFormat
+    where 
+        toFormat n
+            | n > 1048576 = printf "%.3f MiB" (x/1048576)
+            | n > 1024 = printf "%.3f KiB" (x/1024)
+            | otherwise = printf "%d B" n
+            where x = fromIntegral n :: Double
+
+fileBox :: File -> H.Html
+fileBox f = do
     let link = H.toValue $ mconcat ["/media/", filename f]
     let thumbLink = H.toValue $ mconcat ["/media/thumb/", if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
     let (Dim w h) = fromMaybe (Dim 0 0) $ thumbnailDim <$> dim f
-    H.a ! A.type_ "blank" ! A.href link  $ 
-        H.img ! A.class_ "post-file-thumbnail" ! 
+    H.div ! A.class_ "post-file-info" $ do
+        H.a ! A.type_ "blank" ! A.href link $ H.text "File"
+        space
+        H.toHtml $ show $ ext f
+        space
+        H.toHtml ("(" :: Text)
+        H.a ! H.customAttribute "download" "" ! A.href link $ H.text "dl"
+        H.toHtml $ ") " `T.append` (sizeFormat $ size f)
+    if isAudio $ ext f 
+    then 
+        H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
+            H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
+    else 
+        H.a ! A.type_ "blank" ! A.href link  $ 
+            H.img ! A.class_ "post-file-thumbnail" ! 
             A.width (H.toValue w) ! A.height (H.toValue h) ! A.src thumbLink
 
 postView :: Post -> H.Html 
@@ -78,7 +101,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-number" $ 
                 H.a ! A.href (mconcat ["#", postNumber]) $ 
                     H.string $ mconcat ["No.", show $ number p]
-        foldMap imageBox (file p)
+        foldMap fileBox (file p)
         H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
