@@ -29,6 +29,10 @@ doMarkup :: Text -> Text
 doMarkup = gsub [
   REReplace "&#39;&#39;&#39;(.+?)&#39;&#39;&#39;"     "<b>$1</b>",
   REReplace "&#39;&#39;(.+?)&#39;&#39;"               "<i>$1</i>",
+  REReplace "__(.+?)__"                               "<u>$1</u>",
+  REReplace "~~(.+?)~~"                               "<s>$1</s>",
   REReplace "^(&gt;.*)$"                              "<span class=\"greentext\">$1</span>",
   REReplace "^(&lt;.*)$"                              "<span class=\"pinktext\">$1</span>",
-  REReplace "==(.+?)=="                               "<span class=\"redtext\">$1</span>"]
+  REReplace "==(.+?)=="                               "<span class=\"redtext\">$1</span>",
+  REReplace "\\*\\*(.+?)\\*\\*"                       "<span class=\"spoiler\">$1</span>",
+  REReplace "(https?|ftp)://[^\\s/$.?#].[^\\s]*"      "<a href=\"$0\">$0</a>"]
