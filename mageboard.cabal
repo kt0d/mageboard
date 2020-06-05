@@ -24,6 +24,7 @@ executable mageboard
     Imageboard.Markup.PCRE2
     Imageboard.FileUpload
   -- other-extensions:
+  hs-source-dirs:  src
   build-depends:       
     base >=4.10,
     mtl,
@@ -39,9 +40,10 @@ executable mageboard
     wai-middleware-static,
     hs-captcha,
     http-types,
-    cryptonite
+    cryptonite,
+    password
 
   -- hs-source-dirs:
   default-language:    Haskell2010
-  GHC-options:         -Wall -debug -dcore-lint
+  GHC-options:         -Wall -debug -dcore-lint -threaded
   extra-libraries:     pcre2-16
