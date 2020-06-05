@@ -6,7 +6,7 @@ module Imageboard.Markup (
 ) where
 import Data.Text (Text)
 import qualified Data.Text as T
-import Imageboard.Markup.PCRE2(gsub, RegexReplace(..))
+import Regex.PCRE2(gsub, RegexReplace(..))
 
 -- | Escape predefined XML entities in a text value
 --

@@ -4,7 +4,7 @@
 -- see https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/regexredux-ghc-3.html
 -- and PCRE2 manpages
 
-module Imageboard.Markup.PCRE2 (
+module Regex.PCRE2 (
     RegexReplace(..),
     gsub
 ) where

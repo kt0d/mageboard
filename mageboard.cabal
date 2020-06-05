@@ -21,8 +21,8 @@ executable mageboard
     Imageboard.Database
     Imageboard.Types
     Imageboard.Markup
-    Imageboard.Markup.PCRE2
     Imageboard.FileUpload
+    Regex.PCRE2
   -- other-extensions:
   hs-source-dirs:  src
   build-depends:       
