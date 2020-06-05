@@ -67,8 +67,10 @@ sizeFormat = T.pack . toFormat
 fileBox :: File -> H.Html
 fileBox f = do
     let link = H.toValue $ mconcat ["/media/", filename f]
-    let thumbLink = H.toValue $ mconcat ["/media/thumb/", if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
+    let thumbLink = H.toValue $ mconcat ["/media/thumb/"
+            , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
     let (Dim w h) = fromMaybe (Dim 0 0) $ thumbnailDim <$> dim f
+    let dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
     H.div ! A.class_ "post-file-info" $ do
         H.a ! A.type_ "blank" ! A.href link $ H.text "File"
         space
@@ -77,6 +79,7 @@ fileBox f = do
         H.toHtml ("(" :: Text)
         H.a ! H.customAttribute "download" "" ! A.href link $ H.text "dl"
         H.toHtml $ ") " `T.append` (sizeFormat $ size f)
+        foldMap dimFormat $ dim f
     if isAudio $ ext f 
     then 
         H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
