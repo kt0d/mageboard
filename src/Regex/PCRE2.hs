@@ -14,6 +14,7 @@ import Foreign (Word32, Word16, (.|.),
     alloca, allocaArray, mallocArray, free)
 import Foreign.C (CInt(..), CSize(..))
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Text.IO as T
 import qualified Data.Text.Foreign as TF
 import System.IO.Unsafe (unsafePerformIO)
@@ -68,17 +69,20 @@ compilePattern t = useAsPtr t $ \ptr len -> do
             regexOptions
             errnum erroffset 
             nullPtr
-        -- num <- peek errnum
-        -- when (True)  (getErrorText num >>= T.putStrLn)
+        when (code == nullPtr) $ do
+          errmsg <- T.unpack <$> (getErrorText =<< peek errnum)
+          offset <- peek erroffset
+          errorWithoutStackTrace $ "PCRE2.compilePattern error \
+              \in pattern: " ++ T.unpack t ++ " at offset: " ++ show offset ++ ": " ++ errmsg 
         return code
 
 getErrorText :: CInt -> IO Text
-getErrorText err = let bufflen = 2*256 in
+getErrorText err = let bufflen = 256 in
     allocaArray bufflen $ \output' -> do
         outlen <- c_pcre2_get_error_message err output' $ fromIntegral bufflen
         if outlen == c_PCRE2_ERROR_BADDATA 
           then return "No such error"
-          else TF.fromPtr output' (fromIntegral outlen - 1) -- TRAILING ZERO
+          else TF.fromPtr output' (fromIntegral outlen)
 
 
 substituteInternal :: (CText, CSize) -> RegexReplace -> IO (CText, CSize)
