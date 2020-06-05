@@ -124,6 +124,7 @@ boardView ps = commonHtml $ do
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> ps
     H.hr
 
+-- | Create error page with given text as error text.
 errorView :: Text -> H.Html
 errorView msg = commonHtml $ do
     H.div ! A.class_ "content" $

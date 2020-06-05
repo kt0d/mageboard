@@ -135,6 +135,10 @@ unsafeToText t' len = do
     free t'
     return t
 
+-- | Match patterns and do substitutions.
+-- This function will try to compile given patterns and apply
+-- given substitutions in order they appear in input list.
+-- It may throw runtime error if submitted match pattern is incorrect.
 {-# NOINLINE gsub #-}
 gsub :: [RegexReplace] -> Text -> Text
 gsub ps = unsafePerformIO . substitute ps

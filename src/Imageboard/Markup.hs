@@ -8,8 +8,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Regex.PCRE2(gsub, RegexReplace(..))
 
--- | Escape predefined XML entities in a text value
---
+-- | Escape XML entities in a text value.
 escapeHTML :: Text -> Text
 escapeHTML = T.foldr escape mempty
   where
@@ -22,11 +21,13 @@ escapeHTML = T.foldr escape mempty
     --escape '\n' b = "<br>"   `mappend` b
     escape x    b = T.singleton x `mappend` b
 
+-- | Escape HTML and apply formatting to given text.
 formatPost :: Text -> Text
 formatPost = doMarkup .  escapeHTML
 
 doMarkup :: Text -> Text
 doMarkup = gsub [
+  REReplace "&gt;&gt;(\\d+)"                          "<a href=\"#postid$1\">$0</a>",
   REReplace "&#39;&#39;&#39;(.+?)&#39;&#39;&#39;"     "<b>$1</b>",
   REReplace "&#39;&#39;(.+?)&#39;&#39;"               "<i>$1</i>",
   REReplace "__(.+?)__"                               "<u>$1</u>",

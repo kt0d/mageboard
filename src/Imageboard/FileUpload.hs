@@ -18,6 +18,7 @@ import qualified System.Process as P
 import System.Exit (ExitCode(..))
 import Imageboard.Types (File(..), FileType(..), Dimensions(..))
 
+-- | Type representing file as received by HTTP server.
 type FileData = N.FileInfo ByteString
 
 uploadDir :: FilePath
@@ -54,6 +55,9 @@ recognizeFormat b
         isAfter n = flip B.isPrefixOf (B.drop n b)
         is = isAfter 0
 
+-- | Validate file send by the user.
+-- This function recognizes format of sent file and its size
+-- and fails if they do not match predefined requirements.
 tryMkFile :: FileData -> Either Text (File, FilePath)
 tryMkFile f = do
     let bytes = N.fileContent f
@@ -65,6 +69,7 @@ tryMkFile f = do
         return $ (File (T.pack baseName) format (fromIntegral $ B.length bytes) Nothing
             , baseName)
 
+-- | gm identify -format '%w %h' path[0]
 getImgDimensions :: FilePath -> ExceptT Text IO Dimensions
 getImgDimensions path = do
     (exit, out, _) <- liftIO $ P.readProcessWithExitCode "gm" 
@@ -76,6 +81,7 @@ getImgDimensions path = do
         ExitFailure code ->            
             throwError $ "'gm identify' failed with code: " `T.append` (T.pack $ show code)
 
+-- | gm convert -strip -filter Box -thumbnail 200x200 path[0] toPath
 mkImgThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
 mkImgThumbnail path toPath = do
     (exit, _, _) <- liftIO $ P.readProcessWithExitCode "gm" 
@@ -86,6 +92,7 @@ mkImgThumbnail path toPath = do
         ExitFailure code ->            
             throwError $ "'gm convert' failed with code: " `T.append` (T.pack $ show code)
 
+-- | ffprobe -v -8 -show_entries stream=width,height -of 'csv=p=0:s=\ ' -select_streams v:0 path
 getVidDimensions :: FilePath -> ExceptT Text IO Dimensions
 getVidDimensions path = do
     (exit, out, _) <- liftIO $ P.readProcessWithExitCode "ffprobe"
@@ -98,6 +105,7 @@ getVidDimensions path = do
         ExitFailure code ->            
             throwError $ "'ffprobe' failed with code: " `T.append` (T.pack $ show code)         
 
+-- | ffmpeg -v -8 -i path -f mjpeg -vframes 1 -vf scale=w=200:h=200:force_original_aspect_radio=decrese -y toPath.jpg
 mkVidThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
 mkVidThumbnail path toPath = do
     (exit, _, _) <- liftIO $ P.readProcessWithExitCode "ffmpeg" 
@@ -127,7 +135,7 @@ processFile f = case ext f of
             mkVidThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
             return $ f { dim = Just dims}
 
-
+-- | Try to save file, recognize its size and dimensions and generate thumbnail for it.
 saveFile :: File -> FileData -> FilePath -> ExceptT Text IO File
 saveFile f fdata path = do
     liftIO $ B.writeFile (uploadDir ++ path) $ N.fileContent fdata

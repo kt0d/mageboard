@@ -19,11 +19,13 @@ import Imageboard.Types
 import Imageboard.Pages (boardView, errorView)
 import Imageboard.FileUpload
 
+-- | Send HTML created with blaze-html combinators. 
 blaze :: Html -> S.ActionM ()
 blaze = S.html . renderHtml  
   
 maybeParam :: S.Parsable a => Lazy.Text -> S.ActionM (Maybe a)
 maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
+
 maybeFile :: S.ActionM (Maybe FileData)
 maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$> S.files 
 
@@ -59,6 +61,8 @@ tryInsertPost stub mdata = case mdata of
     Nothing -> 
         liftIO $ insertPost stub 
 
+-- | This action will try to insert post sent by the user.
+-- In case of failure it will send user appropriate error page.
 createPost :: S.ActionM ()
 createPost = do 
     postAuthor  <- maybeParam "name"

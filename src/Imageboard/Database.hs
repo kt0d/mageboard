@@ -56,6 +56,7 @@ instance DB.FromRow Post where
                             <$> DB.field
                             <*> DB.field)))
 
+-- | Create sqlite3 database file using schema file.
 setupDb :: IO ()
 setupDb = do
     conn <- DirectDB.open $ T.pack postsDb
@@ -63,7 +64,8 @@ setupDb = do
     DirectDB.exec conn schema
     DirectDB.close conn
 
-insertPost :: PostStub -> IO Int
+-- | Insert post with no file attached into database.
+insertPost :: PostStub -> IO Int -- ^ Post Id.
 insertPost s = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
                         \VALUES (:name, :email, :subject, :text)" 
@@ -73,7 +75,8 @@ insertPost s = DB.withConnection postsDb $ \c -> do
                         , ":text"       := text s]
     fromIntegral <$> DB.lastInsertRowId c
 
-insertFile :: File -> IO Int
+-- | Insert file information into database.
+insertFile :: File -> IO Int -- ^ File Id.
 insertFile f = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Files (Name, Extension, Size, Width, Height) \
                         \VALUES (:name, :ext, :size, :width, :height)" 
@@ -84,7 +87,9 @@ insertFile f = DB.withConnection postsDb $ \c -> do
                         , ":height" := height <$> dim f]
     fromIntegral <$> DB.lastInsertRowId c
 
-insertPostWithFile :: PostStub -> Int -> IO Int
+-- | Insert post with file attached, using previously obtained file Id.
+insertPostWithFile :: PostStub -> Int -- ^ fileId 
+                    -> IO Int -- ^ Post Id.
 insertPostWithFile s f = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId) \
                         \VALUES (:name, :email, :subject, :text, :fileid)" 
@@ -95,7 +100,8 @@ insertPostWithFile s f = DB.withConnection postsDb $ \c -> do
                         , ":fileid"     := f]
     fromIntegral <$> DB.lastInsertRowId c
 
-getFileId :: Text -> IO (Maybe Int)
+-- | Obtain file Id of previously inserted file, giving its name.
+getFileId :: Text -> IO (Maybe Int) -- ^ File Id, if given filename exists in database.
 getFileId name = DB.withConnection postsDb $ \c -> do
     l <- DB.queryNamed c "SELECT Id FROM Files WHERE Name = :name" 
         [":name" := name] :: IO [DB.Only Int]
