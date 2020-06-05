@@ -10,12 +10,14 @@ module Imageboard.Markup.PCRE2 (
 ) where
 import Control.Monad
 import Foreign (Word32, Word16, (.|.), 
-    Ptr, nullPtr, peek, with,
+    Ptr, nullPtr, poke, peek, with,
     alloca, allocaArray, mallocArray, free)
 import Foreign.C (CInt(..), CSize(..))
 import Data.Text (Text)
+import Data.Text.IO as T
 import qualified Data.Text.Foreign as TF
 import System.IO.Unsafe (unsafePerformIO)
+import Debug.Trace
 
 data Code -- PCRE2_CODE
 type CText = Ptr Word16 -- PCRE2_SPTR aka const PCRE2_UCHAR*
@@ -27,6 +29,9 @@ regexOptions = c_PCRE2_UTF .|. c_PCRE2_MULTILINE
 
 foreign import capi "pcre2.h value PCRE2_ERROR_NOMEMORY"
   c_PCRE2_ERROR_NOMEMORY :: CInt
+
+foreign import capi "pcre2.h value PCRE2_ERROR_BADDATA"
+  c_PCRE2_ERROR_BADDATA :: CInt
 
 foreign import capi "pcre2.h value PCRE2_UTF"
   c_PCRE2_UTF :: Word32
@@ -68,10 +73,12 @@ compilePattern t = useAsPtr t $ \ptr len -> do
         return code
 
 getErrorText :: CInt -> IO Text
-getErrorText err = let bufflen = 256 in
-    join $ allocaArray bufflen $ \output' -> do
+getErrorText err = let bufflen = 2*256 in
+    allocaArray bufflen $ \output' -> do
         outlen <- c_pcre2_get_error_message err output' $ fromIntegral bufflen
-        return $ TF.fromPtr output' (fromIntegral outlen)
+        if outlen == c_PCRE2_ERROR_BADDATA 
+          then return "No such error"
+          else TF.fromPtr output' (fromIntegral outlen - 1) -- TRAILING ZERO
 
 
 substituteInternal :: (CText, CSize) -> RegexReplace -> IO (CText, CSize)
@@ -86,7 +93,8 @@ substituteInternal (subject', subjectLen) (REReplace p r) =
             replac' replacLen
             nullPtr outLen'
         --when (True)  (getErrorText ret >>= T.putStrLn)
-        outLen <- peek outLen'
+        outLen <- (subtract 1) <$> peek outLen' -- TRAILING ZERO
+        poke outLen' outLen
         output' <- mallocArray $ fromIntegral outLen
         subs <- c_pcre2_substitute regex 
             subject' subjectLen 0 
