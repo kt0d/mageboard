@@ -2,20 +2,45 @@ hr {
     position: relative
 }
 
+body {
+    background-color: darkgray;
+}
+
+a#new-post {
+    font-size: 15pt;
+    font-weight: bold;
+    margin: auto;
+    display: table;
+}
+
+a.close-button {
+    float: right;
+    font-size: 100%;
+}
+
 fieldset {
     border: none
 }
 
 form#postform {
-    top: 30px;
-    right: 10px;
-    background-color: #BDC;
+    width: max-content;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: paleturquoise;
     border: 1px solid #000;
     padding: 5px;
+    display: none;
+}
+
+form#postform:target {
+    display: block;
+}
+
+form th {
+    background-color: turquoise;
 }
 
 form label {
-    background-color: #ACB;
     text-align: left;
     display: inline-block;
     width: 120px;
@@ -29,19 +54,25 @@ form#postform>label {
 }
 
 textarea {
-    margin-right: 5px;
-    margin-bottom: 5px;
     border: 1px solid #000;
-    width: calc(100% - 75px);
+    width: 100%;
     resize: both;
+    min-width: 200px;
 }
 
 form input {
-    margin-right: 5px;
-    margin-bottom: 5px;
     border: 1px solid #000;
     width: 200px;
+    padding: 1px;
 }
+form input[type="submit"] {
+    float: right;
+}
+
+form input[type="file"] {
+    width: 100%;
+}
+
 
 div.post-container {
     padding-top: 25px;
@@ -49,7 +80,7 @@ div.post-container {
 }
 
 div.post {
-    background-color: #BDC;
+    background-color: paleturquoise;
     padding: 10px;
     border: 1px solid #000;
     display: inline-block;
@@ -66,6 +97,20 @@ img.post-file-thumbnail, video.post-video {
 
 div.post>div.post-header {
     margin-bottom: 5px;
+}
+
+div.post>div.post-header>span.post-subject {
+    font-weight: bold;
+    color: #016;
+}
+
+a.post-email {
+    color: slategray;
+    text-decoration: none;
+}
+
+a.post-email:hover{
+    text-decoration: underline slategray;
 }
 
 div.post>div.post-header>span.post-name {
@@ -109,8 +154,8 @@ span.pinktext {
 span.redtext {
     color: #E33;
     font-weight: bolder;
-    font-size: 11pt;
-    letter-spacing: -0.7px;
+    font-size: 13pt;
+    letter-spacing: 0.5px;
 }
 
 span.spoiler {
@@ -120,4 +165,9 @@ span.spoiler {
 
 span.spoiler:hover {
     color: #FFF;
+}
+
+span.echo {
+    color: #33D;
+    background-color: #FFF;
 }

@@ -29,25 +29,28 @@ commonHtml c = H.docTypeHtml $ do
 
 postForm :: H.Html
 postForm = H.fieldset $ H.form ! A.id "postform" ! 
-    A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ do
-    H.label ! A.for "name" $ "Name"
-    H.input ! A.id "name" ! A.name "name" ! A.type_ "text" ! A.maxlength "64" 
-    H.br
-    H.label ! A.for "email" $ "Email"
-    H.input ! A.id "email" ! A.name "email" ! A.type_ "text" ! A.maxlength "320"
-    H.br
-    H.label ! A.for "subject" $ "Subject"
-    H.input ! A.id "subject" ! A.name "subject" ! A.type_ "text" ! A.maxlength "128" 
-    H.br
-    H.label ! A.for "comment" $ "Comment"
-    H.textarea ! A.id "comment" ! A.name "comment" ! A.form "postform" 
-        ! A.rows "5" ! A.maxlength "32768" $ mempty
-    H.br
-    H.label ! A.for "file" $ "File"
-    H.input ! A.id "file" ! A.type_ "file" ! A.name "file"
-    H.br
-    H.input ! A.type_ "submit" ! A.value "Post"
-    H.br
+    A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ 
+    H.table $ H.tbody $ do
+        H.tr $ do
+            H.th $ H.label ! A.for "name" $ "Name"
+            H.td $ H.input ! A.id "name" ! A.name "name" ! A.type_ "text" ! A.maxlength "64" 
+            H.td $ H.a ! A.class_ "close-button" ! A.href "##" $ "[X]"
+        H.tr $ do
+            H.th $ H.label ! A.for "email" $ "Email"
+            H.td $ H.input ! A.id "email" ! A.name "email" ! A.type_ "text" ! A.maxlength "320"
+        H.tr $ do
+            H.th $ H.label ! A.for "subject" $ "Subject"
+            H.td $ H.input ! A.id "subject" ! A.name "subject" ! A.type_ "text" ! A.maxlength "128" 
+            H.td $ H.input ! A.type_ "submit" ! A.value "Post" 
+        H.tr $ do
+            H.th $ H.label ! A.for "comment" $ "Comment"
+            H.td ! A.colspan "2" $ H.textarea ! A.id "comment" ! A.name "comment" ! A.form "postform" ! A.rows "5" ! A.maxlength "32768" $ mempty
+        H.tr $ do
+            H.th $ H.label ! A.for "file" $ "File"
+            H.td ! A.colspan "2" $ H.input ! A.id "file" ! A.type_ "file" ! A.name "file"
+        H.tr $ do
+            H.th $ H.label ! A.for "captcha" $ "Captcha"
+            H.td $ H.input ! A.id "captcha" ! A.name "captcha" ! A.type_ "text" ! A.maxlength "320" ! A.autocomplete "off"
 
 thumbnailDim :: Dimensions -> Dimensions
 thumbnailDim (Dim w h)
@@ -118,6 +121,8 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
 
 boardView :: [Post] -> H.Html
 boardView ps = commonHtml $ do 
+    H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
+    H.hr
     postForm
     H.hr 
     H.div ! A.class_ "content" $ do
