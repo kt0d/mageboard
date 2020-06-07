@@ -69,16 +69,6 @@ sizeFormat = T.pack . toFormat
 
 fileBox :: File -> H.Html
 fileBox f = do
-    let link = H.toValue $ mconcat ["/media/", filename f]
-    let thumbLink = H.toValue $ mconcat ["/media/thumb/"
-            , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
-    let (Dim w h) = fromMaybe (Dim 0 0) $ thumbnailDim <$> dim f
-    let dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
-    let showAudio = H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
-            H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
-    let showImage = H.a ! A.type_ "blank" ! A.href link  $ 
-            H.img ! A.class_ "post-file-thumbnail" ! 
-            A.width (H.toValue w) ! A.height (H.toValue h) ! A.src thumbLink
     H.div ! A.class_ "post-file-info" $ do
         H.a ! A.type_ "blank" ! A.href link $ H.text "File"
         space
@@ -90,12 +80,23 @@ fileBox f = do
         foldMap dimFormat $ dim f
     case ext f of
         e   | isAudio e -> showAudio
-        e   | isImage e -> showImage
-        PDF -> showImage
-        WEBM -> showImage
-        MP4 -> showImage
-        _ -> mempty   
-        
+        EPUB -> showFallback "epub.png"
+        SWF -> showFallback "swf.png"
+        _ -> showThumb
+    where
+        dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
+        link = H.toValue $ mconcat ["/media/", filename f]
+        thumbLink = H.toValue $ mconcat ["/media/thumb/"
+            , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
+        showAudio = H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
+            H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
+        showImage :: H.AttributeValue -> Dimensions -> H.Html
+        showImage path (Dim w h) = H.a ! A.type_ "blank" ! A.href link $ 
+            H.img ! A.class_ "post-file-thumbnail" ! 
+            A.width (H.toValue w) ! A.height (H.toValue h) ! A.src path
+        showThumb = foldMap (showImage thumbLink . thumbnailDim) $ dim f
+        showFallback path = showImage path $ Dim 100 100
+
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post" $ do
