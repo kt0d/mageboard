@@ -38,18 +38,24 @@ toExtension WEBM = ".webm"
 toExtension MP4 = ".mp4"
 toExtension MP3 = ".mp3"
 toExtension OGG = ".ogg"
+toExtension PDF = ".pdf"
+toExtension EPUB = ".epub"
+toExtension SWF = ".swf"
 
--- https://www.garykessler.net/library/file_sigs.html
+-- <https://www.garykessler.net/library/file_sigs.html>
 recognizeFormat :: ByteString -> Either Text FileType
 recognizeFormat b
     | is "\xFF\xD8"                         = Right JPG
     | is "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A" = Right PNG
     | is "GIF87a" || is "GIF89a"            = Right GIF
     | is "\x1A\x45\xDF\xA3"                 = Right WEBM
-    | isAfter 4 "ftypMSNV" = Right MP4
-    | isAfter 4 "ftypisom" = Right MP4
+    | isAfter 4 "ftypMSNV"                  = Right MP4
+    | isAfter 4 "ftypisom"                  = Right MP4
     | is "ID3"                              = Right MP3
     | is "OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00" = Right OGG
+    | is "%PDF"                             = Right PDF
+    | is "\x50\x4B\x03\x04" && isAfter 50 "epub+zip" = Right EPUB
+    | is "FWS" || is "ZWS" || is "CWS"      = Right SWF
     | otherwise = Left "Unsupported file format"
     where 
         isAfter n = flip B.isPrefixOf (B.drop n b)
@@ -58,6 +64,7 @@ recognizeFormat b
 -- | Validate file send by the user.
 -- This function recognizes format of sent file and its size
 -- and fails if they do not match predefined requirements.
+-- Otherwise, it returns new file and filename.
 tryMkFile :: FileData -> Either Text (File, FilePath)
 tryMkFile f = do
     let bytes = N.fileContent f
@@ -110,7 +117,7 @@ mkVidThumbnail :: FilePath -> FilePath -> ExceptT Text IO ()
 mkVidThumbnail path toPath = do
     (exit, _, _) <- liftIO $ P.readProcessWithExitCode "ffmpeg" 
             ["-v", "-8", "-i", path, "-f", "mjpeg", "-vframes", "1", 
-            "-vf", "scale=w=200:h=200:force_original_aspect_ratio=decrease", "-y", toPath ++ ".jpg"] []
+            "-vf", "scale=w=200:h=200:force_original_aspect_ratio=decrease", "-y", toPath] []
     case exit of
         ExitSuccess -> return ()
         ExitFailure code ->            
@@ -123,16 +130,21 @@ processFile f = case ext f of
     GIF  -> doImg
     WEBM -> doVid 
     MP4  -> doVid
-    MP3  -> const $ pure f
-    OGG  -> const $ pure f
+    PDF  -> doPdf
+    _  -> zz
     where 
+        zz = const $ pure f
+        doPdf path = do
+            dims <- getImgDimensions (uploadDir ++ path)
+            mkImgThumbnail (uploadDir ++ path) (thumbnailDir ++ path ++ ".jpg")
+            return $ f { dim = Just dims}
         doImg path = do
             dims <- getImgDimensions (uploadDir ++ path)
             mkImgThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
             return $ f { dim = Just dims}
         doVid path = do
             dims <- getVidDimensions (uploadDir ++ path)
-            mkVidThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
+            mkVidThumbnail (uploadDir ++ path) (thumbnailDir ++ path ++ ".jpg")
             return $ f { dim = Just dims}
 
 -- | Try to save file, recognize its size and dimensions and generate thumbnail for it.

@@ -10,7 +10,8 @@ import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 
 -- | Data type representing supported file formats.
-data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG deriving (Show, Bounded, Eq)
+data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG | PDF | EPUB | SWF 
+    deriving (Show, Bounded, Eq)
 
 -- | Whether given file format may store an image.
 isImage :: FileType -> Bool
@@ -36,6 +37,9 @@ instance Enum FileType where
     fromEnum    MP4     = 4
     fromEnum    MP3     = 5
     fromEnum    OGG     = 6
+    fromEnum    PDF     = 7
+    fromEnum    EPUB    = 8
+    fromEnum    SWF     = 9
 
     toEnum      0       = JPG
     toEnum      1       = PNG
@@ -44,6 +48,9 @@ instance Enum FileType where
     toEnum      4       = MP4
     toEnum      5       = MP3
     toEnum      6       = OGG
+    toEnum      7       = PDF
+    toEnum      8       = EPUB
+    toEnum      9       = SWF
     toEnum      _       = errorWithoutStackTrace "Enum.FileType: bad argument"
 
 data Post = Post {  number :: Int   -- ^ Post number, unique on board.

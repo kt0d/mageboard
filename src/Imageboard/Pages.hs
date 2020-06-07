@@ -74,6 +74,11 @@ fileBox f = do
             , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
     let (Dim w h) = fromMaybe (Dim 0 0) $ thumbnailDim <$> dim f
     let dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
+    let showAudio = H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
+            H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
+    let showImage = H.a ! A.type_ "blank" ! A.href link  $ 
+            H.img ! A.class_ "post-file-thumbnail" ! 
+            A.width (H.toValue w) ! A.height (H.toValue h) ! A.src thumbLink
     H.div ! A.class_ "post-file-info" $ do
         H.a ! A.type_ "blank" ! A.href link $ H.text "File"
         space
@@ -83,15 +88,14 @@ fileBox f = do
         H.a ! H.customAttribute "download" "" ! A.href link $ H.text "dl"
         H.toHtml $ ") " `T.append` (sizeFormat $ size f)
         foldMap dimFormat $ dim f
-    if isAudio $ ext f 
-    then 
-        H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
-            H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
-    else 
-        H.a ! A.type_ "blank" ! A.href link  $ 
-            H.img ! A.class_ "post-file-thumbnail" ! 
-            A.width (H.toValue w) ! A.height (H.toValue h) ! A.src thumbLink
-
+    case ext f of
+        e   | isAudio e -> showAudio
+        e   | isImage e -> showImage
+        PDF -> showImage
+        WEBM -> showImage
+        MP4 -> showImage
+        _ -> mempty   
+        
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post" $ do
