@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Imageboard.Pages (
     boardView,
-    errorView
+    errorView,
+    threadView
 ) where
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Data.String (IsString)
 import qualified Data.Text as T
-import Data.List as List
+import qualified Data.List as List
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -27,9 +29,9 @@ commonHtml c = H.docTypeHtml $ do
         H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
     H.body c
 
-postForm :: H.Html
-postForm = H.fieldset $ H.form ! A.id "postform" ! 
-    A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ 
+postForm :: Maybe Int -> H.Html
+postForm parent = H.fieldset $ H.form ! A.id "postform" ! 
+    A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ do
     H.table $ H.tbody $ do
         H.tr $ do
             H.th $ H.label ! A.for "name" $ "Name"
@@ -51,6 +53,7 @@ postForm = H.fieldset $ H.form ! A.id "postform" !
         H.tr $ do
             H.th $ H.label ! A.for "captcha" $ "Captcha"
             H.td $ H.input ! A.id "captcha" ! A.name "captcha" ! A.type_ "text" ! A.maxlength "320" ! A.autocomplete "off"
+    foldMap (\n -> H.input ! A.type_ "hidden" ! A.name "parent" ! A.value (H.toValue n)) parent
 
 thumbnailDim :: Dimensions -> Dimensions
 thumbnailDim (Dim w h)
@@ -67,6 +70,10 @@ sizeFormat = T.pack . toFormat
             | otherwise = printf "%d B" n
             where x = fromIntegral n :: Double
 
+fileThumbLink :: File -> Text
+fileThumbLink f = mconcat ["/media/thumb/"
+    , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
+
 fileBox :: File -> H.Html
 fileBox f = do
     H.div ! A.class_ "post-file-info" $ do
@@ -79,15 +86,14 @@ fileBox f = do
         H.toHtml $ ") " `T.append` (sizeFormat $ size f)
         foldMap dimFormat $ dim f
     case ext f of
-        e   | isAudio e -> showAudio
+        e | isAudio e -> showAudio
         EPUB -> showFallback "epub.png"
         SWF -> showFallback "swf.png"
         _ -> showThumb
     where
         dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
         link = H.toValue $ mconcat ["/media/", filename f]
-        thumbLink = H.toValue $ mconcat ["/media/thumb/"
-            , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
+        thumbLink = H.toValue $ fileThumbLink f
         showAudio = H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
             H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
         showImage :: H.AttributeValue -> Dimensions -> H.Html
@@ -124,14 +130,55 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
-boardView :: [Post] -> H.Html
-boardView ps = commonHtml $ do 
+flagsToText :: ThreadInfo -> Text
+flagsToText ti = 
+    if sticky ti    then "(S)" else T.empty <>
+    if lock ti      then "(L)" else T.empty <>
+    if autosage ti  then "(A)" else T.empty <>
+    if cycle_ ti    then "(C)" else T.empty
+
+catalogThread :: ThreadHead -> H.Html
+catalogThread h = H.div ! A.class_ "catalog-thread" $ do
+    H.div ! A.class_ "catalog-thread-link" $ H.a ! A.href threadLink $
+        case file $ opPost h of
+            Just f -> let thumbLink = H.toValue $ fileThumbLink f in H.img ! A.src thumbLink
+            Nothing -> "***"
+    H.div ! A.class_ "thread-info" $ do
+        --H.span ! class_ "thread-board-link" $ a ! href "/b" $ "/b/"
+        H.span ! A.class_ "thread-info-replies" $ H.toHtml  ("R:" ++ (show $ replyCount $ opInfo h))
+        H.span ! A.class_ "thread-info-flags" $ H.toHtml $ flagsToText $ opInfo h
+    H.div ! A.class_ "catalog-thread-latest-post" $ do
+        "L:"
+        H.time ! A.datetime (H.toValue threadDate) $ H.toHtml threadDate
+    H.div ! A.class_ "catalog-thread-subject" $ H.toHtml postSubject
+    H.div ! A.class_ "catalog-thread-comment" $ H.preEscapedToHtml postText
+    where
+        p = opPost h
+        threadLink = H.toValue $ mconcat ["/", show $ number p]
+        threadDate = formatTime defaultTimeLocale "%F %T" (lastBump $ opInfo h)
+        postEmail = email $ content p
+        postSubject = subject $ content p
+        postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
+
+threadView :: Thread -> H.Html
+threadView (Thread h ps) = commonHtml $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
-    H.hr
-    postForm
+    H.hr ! A.class_ "invisible"
+    postForm $ Just $ number $ opPost h
     H.hr 
-    H.div ! A.class_ "content" $ do
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> ps
+    H.div ! A.class_ "content" $ 
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> (opPost h:ps)
+    H.hr
+
+boardView :: [ThreadHead] -> H.Html
+boardView ts = commonHtml $ do
+    H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
+    H.hr ! A.class_ "invisible"
+    postForm Nothing
+    H.hr 
+    H.div ! A.class_ "content" $ 
+        H.div ! A.class_ "catalog-container" $
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts
     H.hr
 
 -- | Create error page with given text as error text.

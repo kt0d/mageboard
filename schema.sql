@@ -2,6 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS Posts (
     Number          INTEGER     NOT NULL,
+    Parent          INTEGER,
     Date            INTEGER     NOT NULL    DEFAULT 0,
     Name            TEXT        NOT NULL    DEFAULT 'Nameless'  CHECK(length(Name)    <= 64),
     Email           TEXT        NOT NULL    DEFAULT ''          CHECK(length(Email)   <= 320),
@@ -10,7 +11,20 @@ CREATE TABLE IF NOT EXISTS Posts (
     FileId          INTEGER,
 
     PRIMARY KEY (Number),
-    FOREIGN KEY (FileId) REFERENCES Files (Id)
+    FOREIGN KEY (FileId) REFERENCES Files (Id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS ThreadInfo (
+    Number          INTEGER     NOT NULL,
+    LastBump    		INTEGER 	  NOT NULL		DEFAULT 0,
+    Sticky		      BOOLEAN		  NOT NULL		DEFAULT FALSE,
+    Lock			      BOOLEAN		  NOT NULL		DEFAULT FALSE,
+    Autosage		    BOOLEAN		  NOT NULL		DEFAULT FALSE,
+    Cycle			      BOOLEAN		  NOT NULL		DEFAULT FALSE,
+    ReplyCount      INTEGER			NOT NULL    DEFAULT 0   	      CHECK(ReplyCount >= 0),
+
+    PRIMARY KEY (Number),
+    FOREIGN KEY (Number) REFERENCES Posts (Number) ON DELETE CASCADE
 );
 
 -- CREATE TABLE IF NOT EXISTS FileRefs (
@@ -64,16 +78,30 @@ END;
 CREATE VIEW IF NOT EXISTS posts_and_files
   AS
   SELECT
+    Posts.Parent,
     Posts.Number,
     Posts.Date,
     Posts.Name,
     Posts.Email,
     Posts.Subject,
     Posts.Text,
+    
     Files.Name AS Filename,
     Files.Extension,
     Files.Size,
     Files.Width,
     Files.Height
-  FROM Posts LEFT JOIN Files on Posts.FileId = Files.Id
-  ORDER BY Posts.Number DESC;
+  FROM Posts LEFT JOIN Files on Posts.FileId = Files.Id;
+
+CREATE VIEW IF NOT EXISTS threads
+  AS
+  SELECT
+    posts_and_files.*,    
+    ThreadInfo.LastBump,
+    ThreadInfo.Sticky,
+    ThreadInfo.Lock,
+    ThreadInfo.Autosage,
+    ThreadInfo.Cycle,
+    ThreadInfo.ReplyCount
+  FROM posts_and_files 
+  JOIN ThreadInfo on posts_and_files.Number = ThreadInfo.Number;

@@ -4,7 +4,10 @@ module Imageboard.Types (
     File(..),
     FileType(..),
     isImage, isAudio,
-    Dimensions(..)
+    Dimensions(..),
+    ThreadInfo(..),
+    ThreadHead(..),
+    Thread(..)
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
@@ -53,20 +56,43 @@ instance Enum FileType where
     toEnum      9       = SWF
     toEnum      _       = errorWithoutStackTrace "Enum.FileType: bad argument"
 
-data Post = Post {  number :: Int   -- ^ Post number, unique on board.
-                ,   date :: UTCTime -- ^ UTC date of post creation.
-                ,   content :: PostStub 
-                ,   file :: Maybe File -- ^ File if attached.
+data Post = Post {  
+        parent :: Maybe Int
+    ,   number :: Int   -- ^ Post number, unique on board.
+    ,   date :: UTCTime -- ^ UTC date of post creation.
+    ,   content :: PostStub 
+    ,   file :: Maybe File -- ^ File if attached.
 } deriving (Show)
 
-data PostStub = Stub {  author :: Text
-                    ,   email :: Text
-                    ,   subject :: Text
-                    ,   text :: Text -- ^ Post body.
+data PostStub = Stub {  
+        author :: Text
+    ,   email :: Text
+    ,   subject :: Text
+    ,   text :: Text -- ^ Post body.
 } deriving (Show)
 
-data File = File {  filename :: Text -- ^ Exact file name, including extension.
-                ,   ext :: FileType -- ^ File format.
-                ,   size :: Int -- ^ Size in bytes.
-                ,   dim :: Maybe Dimensions -- ^ Dimensions if they apply.
+data File = File {  
+        filename :: Text -- ^ Exact file name, including extension.
+    ,   ext :: FileType -- ^ File format.
+    ,   size :: Int -- ^ Size in bytes.
+    ,   dim :: Maybe Dimensions -- ^ Dimensions if they apply.
+} deriving (Show)
+
+data ThreadInfo = ThreadInfo {  
+        lastBump :: UTCTime
+    ,   sticky :: Bool
+    ,   lock :: Bool
+    ,   autosage :: Bool
+    ,   cycle_ :: Bool
+    ,   replyCount :: Int
+} deriving (Show)
+
+data ThreadHead = ThreadHead { 
+        opPost :: Post
+    ,   opInfo :: ThreadInfo
+} deriving (Show)
+
+data Thread = Thread {
+        op :: ThreadHead
+    ,   replies :: [Post]
 } deriving (Show)

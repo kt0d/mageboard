@@ -1,10 +1,12 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TypeOperators #-}
 module Imageboard.Database (
     setupDb,
     insertPost,
     insertFile,
     insertPostWithFile,
     getPosts,
+    getThread,
+    getThreads,
     getFileId
 ) where
 import Control.Monad (liftM2, liftM4)
@@ -40,8 +42,10 @@ parseDate f = case DB.fieldData f of
         Right t -> DB.Ok $ t
     _ -> DB.returnError DB.Incompatible f "expecting an SQLInteger column type"
 
+
 instance DB.FromRow Post where
     fromRow = Post  <$> DB.field 
+                    <*> DB.field
                     <*> DB.fieldWith parseDate 
                     <*> (Stub   
                         <$> DB.field 
@@ -55,6 +59,15 @@ instance DB.FromRow Post where
                         <*> (Just <$> (liftM2 Dim 
                             <$> DB.field
                             <*> DB.field)))
+
+instance DB.FromRow ThreadInfo where
+    fromRow = ThreadInfo 
+                <$> DB.fieldWith parseDate
+                <*> DB.field
+                <*> DB.field 
+                <*> DB.field
+                <*> DB.field
+                <*> DB.field
 
 -- | Create sqlite3 database file using schema file.
 setupDb :: IO ()
@@ -71,7 +84,7 @@ insertPost s = DB.withConnection postsDb $ \c -> do
                         \VALUES (:name, :email, :subject, :text)" 
                         [ ":name"       := author s
                         , ":email"      := email s
-                        , ":subject"    := subject s
+                        , ":subject"    := subject (s :: PostStub)
                         , ":text"       := text s]
     fromIntegral <$> DB.lastInsertRowId c
 
@@ -110,3 +123,18 @@ getFileId name = DB.withConnection postsDb $ \c -> do
 getPosts :: IO [Post]
 getPosts = DB.withConnection postsDb $ \c ->
     DB.query_ c "SELECT * FROM posts_and_files" 
+
+getThread :: Int -> IO (Either Text Thread)
+getThread n = DB.withConnection postsDb $ \c -> do
+    h <-  DB.queryNamed c "SELECT * FROM threads WHERE Number = :number" 
+        [":number" := n]
+    ps <- DB.queryNamed c "SELECT * FROM posts_and_files WHERE posts_and_files.Parent = :number"
+        [":number" := n]
+    case h of
+        [] -> return $ Left "No such thread"
+        (p DB.:. i):_ -> return $ Right $ Thread (ThreadHead p i) ps
+
+getThreads :: IO [ThreadHead]
+getThreads = DB.withConnection postsDb $ \c -> do
+    q <- DB.query_ c "SELECT * FROM threads" 
+    return $ flip map q $ \(p DB.:. i) -> ThreadHead p i
