@@ -1,17 +1,17 @@
 cabal-version:       >=1.10
 name:                mageboard
 version:             0.1.0.0
--- synopsis:
+synopsis:            A simple imageboard
 -- description:
 -- bug-reports:
 -- license:
-license-file:        LICENSE
+-- license-file:        LICENSE
 author:              kt0d
 maintainer:          kt0d@proton.me
 -- copyright:
--- category:
+category:            Web
 build-type:          Simple
-extra-source-files:  CHANGELOG.md
+-- extra-source-files:  CHANGELOG.md
 
 executable mageboard
   main-is:             Main.hs
@@ -43,7 +43,7 @@ executable mageboard
     cryptonite,
     password
 
-  -- hs-source-dirs:
   default-language:    Haskell2010
   GHC-options:         -Wall -debug -dcore-lint -threaded
   extra-libraries:     pcre2-16
+
