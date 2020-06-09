@@ -17,8 +17,6 @@ escapeHTML = T.foldr escape mempty
     escape '>'  b = "&gt;"   `mappend` b
     escape '&'  b = "&amp;"  `mappend` b
     escape '"'  b = "&quot;" `mappend` b
-    escape '\'' b = "&#39;"  `mappend` b
-    --escape '\n' b = "<br>"   `mappend` b
     escape x    b = T.singleton x `mappend` b
 
 -- | Escape HTML and apply formatting to given text.
@@ -28,8 +26,8 @@ formatPost = doMarkup .  escapeHTML
 doMarkup :: Text -> Text
 doMarkup = gsub [
   REReplace "&gt;&gt;(\\d+)"                          "<a href=\"#postid$1\">$0</a>",
-  REReplace "&#39;&#39;&#39;(.+?)&#39;&#39;&#39;"     "<b>$1</b>",
-  REReplace "&#39;&#39;(.+?)&#39;&#39;"               "<i>$1</i>",
+  REReplace "'''(.+?)'''"                             "<b>$1</b>",
+  REReplace "''(.+?)''"                               "<i>$1</i>",
   REReplace "__(.+?)__"                               "<u>$1</u>",
   REReplace "~~(.+?)~~"                               "<s>$1</s>",
   REReplace "^(&gt;.*)$"                              "<span class=\"greentext\">$1</span>",
