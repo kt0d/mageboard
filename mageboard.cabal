@@ -18,6 +18,9 @@ executable mageboard
   other-modules:
     Imageboard.Actions
     Imageboard.Pages
+    Imageboard.Pages.Common
+    Imageboard.Pages.Thread
+    Imageboard.Pages.Catalog
     Imageboard.Database
     Imageboard.Types
     Imageboard.Markup

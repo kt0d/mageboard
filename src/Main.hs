@@ -7,7 +7,7 @@ import qualified Network.Wai.Middleware.Static as Wai
 import qualified Web.Scotty as S
 
 import Imageboard.Database (setupDb, getPosts, getThreads, getThread)
-import Imageboard.Pages (boardView, threadView, errorView)
+import Imageboard.Pages (catalogView, threadView, errorView)
 import Imageboard.Actions
 
 
@@ -19,7 +19,7 @@ main = do
         S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
         S.get "/" $ do
             threads <- liftIO getThreads
-            blaze $ boardView threads
+            blaze $ catalogView threads
         S.get "/:number" $ do
             num <- S.param "number"
             e <- liftIO $ getThread num

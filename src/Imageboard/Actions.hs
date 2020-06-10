@@ -17,7 +17,7 @@ import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Debug.Trace
 import Imageboard.Database
 import Imageboard.Types
-import Imageboard.Pages (boardView, errorView)
+import Imageboard.Pages (errorView)
 import Imageboard.FileUpload
 
 -- | Send HTML created with blaze-html combinators. 
