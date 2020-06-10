@@ -4,9 +4,12 @@ module Imageboard.Database (
     insertPost,
     insertFile,
     insertPostWithFile,
+    insertThread,
+    insertThreadWithFile,
     getPosts,
     getThread,
     getThreads,
+    checkThread,
     getFileId
 ) where
 import Control.Monad (liftM2, liftM4)
@@ -15,8 +18,8 @@ import Data.Maybe (listToMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
-import Database.SQLite.Simple (NamedParam((:=)))
-import qualified Database.SQLite.Simple.FromRow as DB (fieldWith)
+import Database.SQLite.Simple (NamedParam((:=)), (:.)(..))
+import qualified Database.SQLite.Simple.FromRow as DB (RowParser, fieldWith)
 import qualified Database.SQLite.Simple.FromField as DB (FieldParser, fieldData, returnError)
 import qualified Database.SQLite.Simple.Ok as DB (Ok(..))
 import qualified Database.SQLite.Simple.Time.Implementation as DB
@@ -42,9 +45,11 @@ parseDate f = case DB.fieldData f of
         Right t -> DB.Ok $ t
     _ -> DB.returnError DB.Incompatible f "expecting an SQLInteger column type"
 
+mkThreadHead ::  Post :. ThreadInfo -> ThreadHead
+mkThreadHead (p :. i) = ThreadHead p i
 
 instance DB.FromRow Post where
-    fromRow = Post  <$> DB.field 
+    fromRow = Post <$> DB.field 
                     <*> DB.field
                     <*> DB.fieldWith parseDate 
                     <*> (Stub   
@@ -59,6 +64,7 @@ instance DB.FromRow Post where
                         <*> (Just <$> (liftM2 Dim 
                             <$> DB.field
                             <*> DB.field)))
+        where mkPost _ = Post -- ignore Parent column
 
 instance DB.FromRow ThreadInfo where
     fromRow = ThreadInfo 
@@ -78,14 +84,15 @@ setupDb = do
     DirectDB.close conn
 
 -- | Insert post with no file attached into database.
-insertPost :: PostStub -> IO Int -- ^ Post Id.
-insertPost s = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
-                        \VALUES (:name, :email, :subject, :text)" 
+insertPost :: Int -> PostStub -> IO Int -- ^ Post Id.
+insertPost p s = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Parent) \
+                        \VALUES (:name, :email, :subject, :text, :parent)" 
                         [ ":name"       := author s
                         , ":email"      := email s
-                        , ":subject"    := subject (s :: PostStub)
-                        , ":text"       := text s]
+                        , ":subject"    := subject s
+                        , ":text"       := text s
+                        , ":parent"     := p]
     fromIntegral <$> DB.lastInsertRowId c
 
 -- | Insert file information into database.
@@ -101,9 +108,34 @@ insertFile f = DB.withConnection postsDb $ \c -> do
     fromIntegral <$> DB.lastInsertRowId c
 
 -- | Insert post with file attached, using previously obtained file Id.
-insertPostWithFile :: PostStub -> Int -- ^ fileId 
+insertPostWithFile :: Int -> PostStub -> Int -- ^ fileId 
                     -> IO Int -- ^ Post Id.
-insertPostWithFile s f = DB.withConnection postsDb $ \c -> do
+insertPostWithFile p s f = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Parent) \
+                        \VALUES (:name, :email, :subject, :text, :fileid, :parent)" 
+                        [ ":name"       := author s
+                        , ":email"      := email s
+                        , ":subject"    := subject s
+                        , ":text"       := text s
+                        , ":fileid"     := f
+                        , ":parent"     := p]
+    fromIntegral <$> DB.lastInsertRowId c
+
+insertThread :: PostStub -> IO Int
+insertThread s = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
+                        \VALUES (:name, :email, :subject, :text)" 
+                        [ ":name"       := author s
+                        , ":email"      := email s
+                        , ":subject"    := subject s
+                        , ":text"       := text s]
+    n <- DB.lastInsertRowId c
+    DB.executeNamed c   "INSERT INTO ThreadInfo (Number) VALUES (:number)"
+                        [":number"      := n]
+    return $ fromIntegral n
+
+insertThreadWithFile :: PostStub -> Int -> IO Int
+insertThreadWithFile s f = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId) \
                         \VALUES (:name, :email, :subject, :text, :fileid)" 
                         [ ":name"       := author s
@@ -111,7 +143,10 @@ insertPostWithFile s f = DB.withConnection postsDb $ \c -> do
                         , ":subject"    := subject s
                         , ":text"       := text s
                         , ":fileid"     := f]
-    fromIntegral <$> DB.lastInsertRowId c
+    n <- DB.lastInsertRowId c
+    DB.executeNamed c   "INSERT INTO ThreadInfo (Number) VALUES (:number)"
+                        [":number"      := n]
+    return $ fromIntegral n
 
 -- | Obtain file Id of previously inserted file, giving its name.
 getFileId :: Text -> IO (Maybe Int) -- ^ File Id, if given filename exists in database.
@@ -128,13 +163,20 @@ getThread :: Int -> IO (Either Text Thread)
 getThread n = DB.withConnection postsDb $ \c -> do
     h <-  DB.queryNamed c "SELECT * FROM threads WHERE Number = :number" 
         [":number" := n]
-    ps <- DB.queryNamed c "SELECT * FROM posts_and_files WHERE posts_and_files.Parent = :number"
-        [":number" := n]
+    ps <- DB.queryNamed c   "SELECT * FROM posts_and_files WHERE posts_and_files.Parent = :number \
+                            \ORDER BY Number ASC"
+        [":number" := n] 
     case h of
         [] -> return $ Left "No such thread"
-        (p DB.:. i):_ -> return $ Right $ Thread (ThreadHead p i) ps
+        x:_ -> return $ Right $ Thread (mkThreadHead x) ps
+checkThread :: Int -> IO Bool
+checkThread n = DB.withConnection postsDb $ \c -> do
+    h <-  DB.queryNamed c "SELECT EXISTS(SELECT 1 FROM threads WHERE Number = :number)" 
+        [":number" := n] :: IO [DB.Only Bool]
+    return $ any DB.fromOnly h
 
 getThreads :: IO [ThreadHead]
 getThreads = DB.withConnection postsDb $ \c -> do
-    q <- DB.query_ c "SELECT * FROM threads" 
-    return $ flip map q $ \(p DB.:. i) -> ThreadHead p i
+    q <- DB.query_ c    "SELECT * FROM threads \
+                        \ORDER BY Sticky DESC, LastBump DESC" 
+    return $ map mkThreadHead q

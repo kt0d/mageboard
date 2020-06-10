@@ -31,7 +31,7 @@ commonHtml c = H.docTypeHtml $ do
 
 postForm :: Maybe Int -> H.Html
 postForm parent = H.fieldset $ H.form ! A.id "postform" ! 
-    A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ do
+    A.action postUrl ! A.method "post" ! A.enctype "multipart/form-data" $ do
     H.table $ H.tbody $ do
         H.tr $ do
             H.th $ H.label ! A.for "name" $ "Name"
@@ -54,6 +54,10 @@ postForm parent = H.fieldset $ H.form ! A.id "postform" !
             H.th $ H.label ! A.for "captcha" $ "Captcha"
             H.td $ H.input ! A.id "captcha" ! A.name "captcha" ! A.type_ "text" ! A.maxlength "320" ! A.autocomplete "off"
     foldMap (\n -> H.input ! A.type_ "hidden" ! A.name "parent" ! A.value (H.toValue n)) parent
+    where
+        postUrl = H.toValue $ case parent of
+            Just n -> "/post/" ++ show n
+            Nothing -> "/post"
 
 thumbnailDim :: Dimensions -> Dimensions
 thumbnailDim (Dim w h)

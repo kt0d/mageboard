@@ -6,11 +6,12 @@ module Imageboard.Actions (
 import Control.Monad.Except
 import Data.Maybe
 import Data.Text (Text)
-import qualified Data.Text.Lazy as Lazy (Text)
+import qualified Data.Text.Lazy as Lazy (Text, pack, empty)
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
 import qualified Network.Wai.Parse as N (FileInfo(..))
 import qualified Web.Scotty as S
+import Network.HTTP.Types.Status (created201, badRequest400)
 import Text.Blaze.Html5 (Html)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Debug.Trace
@@ -48,23 +49,37 @@ tryMkStub a e s t hasFile
         postSubject = fromMaybe "" s
         postText    = fromMaybe "" t
 
-tryInsertPost :: PostStub -> Maybe FileData -> ExceptT Text IO Int
-tryInsertPost stub mdata = case mdata of
+tryInsertFile :: FileData -> ExceptT Text IO Int
+tryInsertFile fdata = do
+    (f, fPath) <- liftEither $ tryMkFile fdata
+    exists <- liftIO $ getFileId $ filename f
+    case exists of
+        Just fileId -> return fileId
+        Nothing -> do
+            newF <- saveFile f fdata fPath
+            liftIO $ insertFile newF
+
+tryInsertThread :: PostStub -> Maybe FileData -> ExceptT Text IO Int
+tryInsertThread stub mdata = case mdata of
     Just fdata -> do
-        (f, fPath) <- liftEither $ tryMkFile fdata
-        exists <- liftIO $ getFileId $ filename f
-        case exists of
-            Just fileId -> liftIO $ insertPostWithFile stub fileId
-            Nothing -> do
-                newF <- saveFile f fdata fPath
-                liftIO $ insertFile newF >>= insertPostWithFile stub
+        fileId <- tryInsertFile fdata
+        liftIO $ insertThreadWithFile stub fileId
     Nothing -> 
-        liftIO $ insertPost stub 
+        liftIO $ insertThread stub 
+
+tryInsertPost :: Int -> PostStub -> Maybe FileData -> ExceptT Text IO Int
+tryInsertPost p stub mdata = case mdata of
+    Just fdata -> do
+        fileId <- tryInsertFile fdata
+        liftIO $ insertPostWithFile p stub fileId
+    Nothing -> 
+        liftIO $ insertPost p stub 
+
 
 -- | This action will try to insert post sent by the user.
 -- In case of failure it will send user appropriate error page.
-createPost :: S.ActionM ()
-createPost = do 
+createPost :: Maybe Int -> S.ActionM ()
+createPost p = do 
     postAuthor  <- maybeParam "name"
     postEmail   <- maybeParam "email"
     postSubject <- maybeParam "subject"
@@ -72,7 +87,17 @@ createPost = do
     postFile    <- maybeFile
     result <- liftIO $ runExceptT $ do 
         stub <- liftEither $ tryMkStub postAuthor postEmail postSubject postText (isJust postFile)
-        tryInsertPost stub postFile
+        case p of
+            Just n -> do
+                exists <- liftIO $ checkThread n
+                if exists 
+                    then tryInsertPost n stub postFile
+                    else throwError "Thread does not exist"
+            Nothing -> tryInsertThread stub postFile
     case result of
-        Left msg -> blaze $ errorView msg
-        Right _ -> S.redirect "/"
+        Left msg -> do
+            S.status badRequest400
+            blaze $ errorView msg
+        Right _ -> do
+            S.status created201
+            S.redirect $ "/" <> fromMaybe Lazy.empty (Lazy.pack <$> show <$> p)

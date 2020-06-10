@@ -63,6 +63,24 @@ BEGIN
     UPDATE Posts SET Date = strftime('%s','now') WHERE ROWID = NEW.ROWID;
 END;
 
+CREATE TRIGGER IF NOT EXISTS set_lastbump AFTER INSERT ON ThreadInfo
+BEGIN
+    UPDATE ThreadInfo SET LastBump = strftime('%s','now') WHERE ROWID = NEW.ROWID;
+END;
+
+CREATE TRIGGER IF NOT EXISTS bump_thread AFTER INSERT ON Posts
+  WHEN NEW.Parent IS NOT NULL AND NEW.Email NOT LIKE '%sage%'
+BEGIN
+  UPDATE ThreadInfo SET LastBump = STRFTIME('%s', 'now') 
+    WHERE Number = NEW.Parent AND Autosage = FALSE;
+END;
+
+CREATE TRIGGER IF NOT EXISTS increment_post_number AFTER INSERT ON Posts
+BEGIN
+  UPDATE ThreadInfo SET ReplyCount = ReplyCount + 1 WHERE NEW.Parent = ThreadInfo.Number;
+END;
+
+
 -- CREATE TRIGGER IF NOT EXISTS remove_old_refs BEFORE DELETE ON Posts
 -- BEGIN
 --   DELETE FROM FileRefs WHERE Number = OLD.Number;
@@ -96,12 +114,13 @@ CREATE VIEW IF NOT EXISTS posts_and_files
 CREATE VIEW IF NOT EXISTS threads
   AS
   SELECT
-    posts_and_files.*,    
+    posts_and_files.*,
+
     ThreadInfo.LastBump,
     ThreadInfo.Sticky,
     ThreadInfo.Lock,
     ThreadInfo.Autosage,
     ThreadInfo.Cycle,
     ThreadInfo.ReplyCount
-  FROM posts_and_files 
-  JOIN ThreadInfo on posts_and_files.Number = ThreadInfo.Number;
+  FROM ThreadInfo
+  JOIN posts_and_files on posts_and_files.Number = ThreadInfo.Number;
