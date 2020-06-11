@@ -5,6 +5,7 @@ import Control.Monad.Trans
 import qualified Network.Wai.Middleware.RequestLogger as Wai (logStdoutDev)
 import qualified Network.Wai.Middleware.Static as Wai 
 import qualified Web.Scotty as S
+import Network.HTTP.Types.Status (notFound404)
 
 import Imageboard.Database (setupDb, getPosts, getThreads, getThread)
 import Imageboard.Pages (catalogView, threadView, errorView)
@@ -31,3 +32,6 @@ main = do
             createPost $ Just num
         S.post "/post" $ do
             createPost Nothing
+        S.notFound $ do
+            S.status notFound404
+            blaze $ errorView "404"
