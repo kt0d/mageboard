@@ -92,7 +92,7 @@ postFormTable = H.table $ H.tbody $ do
         H.td $ H.input ! A.type_ "submit" ! A.value "Post" 
     H.tr $ do
         H.th $ H.label ! A.for "comment" $ "Comment"
-        H.td ! A.colspan "2" $ H.textarea ! A.id "comment" ! A.name "comment" ! A.form "postform" ! A.rows "5" ! A.maxlength "32768" $ mempty
+        H.td ! A.colspan "2" $ H.textarea ! A.id "comment" ! A.name "comment" ! A.rows "5" ! A.maxlength "32768" $ mempty
     H.tr $ do
         H.th $ H.label ! A.for "file" $ "File"
         H.td ! A.colspan "2" $ H.input ! A.id "file" ! A.type_ "file" ! A.name "file"
