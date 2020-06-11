@@ -11,13 +11,14 @@ body {
     padding-top: 30px;
 }
 
-a {
+a, summary {
     color: slategray;
     text-decoration: none;
 }
 
-a:hover {
+a:hover, summary:hover {
     text-decoration: underline slategray;
+    cursor: pointer;
 }
 
 div#content {
@@ -119,6 +120,7 @@ div.post {
     background-color: paleturquoise;
     padding: 10px;
     border: 1px solid black;
+    border-radius: 2px;
     display: inline-block;
     margin-bottom: 5px;
     max-width: 1150px;
@@ -190,12 +192,12 @@ div.catalog-thread {
     padding: 10px;
     margin: 5px;
     border: 1px solid #000;
+    border-radius: 2px;
     background-color: paleturquoise;
     overflow-y: auto;
     overflow-x: hidden;
     word-wrap: break-word;
     white-space: pre-wrap;
-
 }
 
 div.catalog-thread>div.catalog-thread-subject {
@@ -251,6 +253,7 @@ span.echo {
 
 div#topbar {
     z-index: 999;
+    height: 30px;
 }
 
 div#topbar {
@@ -277,7 +280,7 @@ div#topbar>nav#topnav>ul {
 }
 
 ul#shortcuts {
-
+    float: right;
 }
 
 div#topbar>nav#topnav>ul>li {
@@ -286,3 +289,26 @@ div#topbar>nav#topnav>ul>li {
     padding-right: 8px;
 }
 
+/*** Info box ***/
+
+/* details#infobox {
+
+}
+details#infobox > summary {
+} */
+
+div.infobox-content {
+    top: 30px;
+    right: 5px;
+    position: absolute;
+    display: block;
+    width: 300px;
+    background-color: turquoise;
+    padding: 10px;
+    border: 1px solid black;
+    border-radius: 2px;
+    max-width: 1150px;
+    word-wrap: break-word;
+    resize: both;
+    overflow: auto;
+}

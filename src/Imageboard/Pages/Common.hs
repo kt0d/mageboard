@@ -50,7 +50,22 @@ navBar = H.div ! A.id "topbar" $
             H.li $ H.a ! A.href "/" $ "home"
             H.li $ H.a ! A.href "/recent" $ "recent"
         H.ul ! A.id "shortcuts" $ do
-            H.li $ H.a ! A.href "#infobox" $"[i]" 
+            H.li $ H.details ! A.id "infobox" $ do
+                H.summary "info"
+                H.div ! A.class_ "infobox-content" $ do
+                    "mageboard 2020"
+                    H.hr
+                    "Allowed file formats: JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG | PDF | EPUB | SWF"
+                    H.hr
+                    "Formattting options include:"
+                    H.ul $ do
+                        H.li "'''bold text'''"
+                        H.li "''italic text''"
+                        H.li "**spoiler**"
+                        H.li "==red text=="
+                        H.li ">greentext"
+                        H.li "<pinktext"
+                        H.li "```code``` (multiline allowed)"
 
 addTopBottom :: H.Html -> H.Html
 addTopBottom c = do
