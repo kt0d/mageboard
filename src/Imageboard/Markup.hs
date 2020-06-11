@@ -13,11 +13,11 @@ escapeHTML :: Text -> Text
 escapeHTML = T.foldr escape mempty
   where
     escape :: Char -> Text -> Text
-    escape '<'  b = "&lt;"   `mappend` b
-    escape '>'  b = "&gt;"   `mappend` b
-    escape '&'  b = "&amp;"  `mappend` b
-    escape '"'  b = "&quot;" `mappend` b
-    escape x    b = T.singleton x `mappend` b
+    escape '<'  = (<>) "&lt;"
+    escape '>'  = (<>) "&gt;"
+    escape '&'  = (<>) "&amp;"
+    escape '"'  = (<>) "&quot;"
+    escape x    = (<>) $ T.singleton x
 
 -- | Escape HTML and apply formatting to given text.
 formatPost :: Text -> Text
@@ -34,4 +34,5 @@ doMarkup = gsub [
   REReplace "^(&lt;.*)$"                              "<span class=\"pinktext\">$1</span>",
   REReplace "==(.+?)=="                               "<span class=\"redtext\">$1</span>",
   REReplace "\\*\\*(.+?)\\*\\*"                       "<span class=\"spoiler\">$1</span>",
+  REReplace "(?s-m)\\`\\`\\`(.+?)\\`\\`\\`"           "<code>$1</code>",
   REReplace "(https?|ftp)://[^\\s/$.?#].[^\\s]*"      "<a href=\"$0\">$0</a>"]
