@@ -1,3 +1,5 @@
+/*** General rules ***/
+
 hr {
     position: relative
 }
@@ -6,6 +8,47 @@ body {
     background-color: darkgray;
     font-family: sans-serif;
     font-size: 11pt;
+    padding-top: 30px;
+}
+
+a {
+    color: slategray;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline slategray;
+}
+
+div#content {
+    margin-top: 30px;
+}
+
+.invisible {
+    display: none;
+}
+
+div.container {
+    margin: auto;
+    background-color: paleturquoise;
+    border: 1px solid #000;
+    padding: 10px;
+}
+
+div.container.narrow {
+    max-width: 670px;
+}
+
+/*** Posting forms ***/
+
+div.form-container {
+    padding-top: 30px;
+    margin-top: -30px;
+    display: none;
+}
+
+div.form-container:target {
+    display: block;
 }
 
 a#new-post {
@@ -21,21 +64,16 @@ a.close-button {
 }
 
 fieldset {
-    border: none
+    border: none;
 }
 
-form#postform {
+fieldset>form {
     width: max-content;
     margin-left: auto;
     margin-right: auto;
     background-color: paleturquoise;
     border: 1px solid #000;
     padding: 5px;
-    display: none;
-}
-
-form#postform:target {
-    display: block;
 }
 
 form th {
@@ -51,7 +89,7 @@ form label {
     padding: 4px;
 }
 
-form#postform>label {
+fieldset>form>label {
     width: 80px;
 }
 
@@ -75,20 +113,26 @@ form input[type="file"] {
     width: 100%;
 }
 
-
-div.post-container {
-    padding-top: 25px;
-    margin-top: -25px;
-}
+/*** Post style ***/
 
 div.post {
     background-color: paleturquoise;
     padding: 10px;
-    border: 1px solid #000;
+    border: 1px solid black;
     display: inline-block;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     max-width: 1150px;
     word-wrap: break-word;
+}
+
+div.post-container {
+    padding-top: 30px;
+    margin-top: -30px;
+}
+
+div.post-container:target .post {
+    border: 2px dashed darkred;
+    background-color: turquoise;
 }
 
 img.post-file-thumbnail, video.post-video {
@@ -99,6 +143,7 @@ img.post-file-thumbnail, video.post-video {
 
 div.post>div.post-header {
     margin-bottom: 5px;
+    font-size: 12pt;
 }
 
 div.post>div.post-header>span.post-subject {
@@ -122,6 +167,7 @@ div.post>div.post-header>span.post-name {
 
 div.post-comment {
     white-space: pre-wrap;
+    margin: 5px;
 }
 
 div.post-file-info {
@@ -129,20 +175,7 @@ div.post-file-info {
     margin-top: -5px;
 }
 
-.invisible {
-    display: none;
-}
-
-div.container {
-    margin: auto;
-    background-color: #CED;
-    border: 1px solid #000;
-    padding: 10px;
-}
-
-div.container.narrow {
-    max-width: 670px;
-}
+/*** Catalog ***/
 
 div.catalog-container {
     display: flex;
@@ -152,8 +185,8 @@ div.catalog-container {
 }
 
 div.catalog-thread {
-    width: 250px;
-    height: 300px;
+    width: 170px;
+    height: 250px;
     padding: 10px;
     margin: 5px;
     border: 1px solid #000;
@@ -175,8 +208,16 @@ div.catalog-thread>div.catalog-thread-latest-post {
     font-size: 8pt;
 }
 
+div.catalog-thread-link {
+    font-size: 15pt;
+}
 
-/* Post formatting */
+img.catalog-thumbnail {
+    max-width: 100%;
+}
+
+/*** Post text formatting ***/
+
 span.greentext {
     color: #070;
 }
@@ -205,3 +246,43 @@ span.echo {
     color: #33D;
     background-color: #FFF;
 }
+
+/*** Navbar ****/
+
+div#topbar {
+    z-index: 999;
+}
+
+div#topbar {
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+div#topbar>nav#topnav {
+    background-color: paleturquoise;
+    padding: 2px;
+    padding-left: 8px;
+    border-bottom: 1px solid #000;
+    height: auto;;
+}
+
+div#topbar>nav#topnav>ul {
+    list-style-type: none;
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+ul#shortcuts {
+
+}
+
+div#topbar>nav#topnav>ul>li {
+    display: inline-block;
+    padding: 2px;
+    padding-right: 8px;
+}
+

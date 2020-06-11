@@ -46,8 +46,9 @@ fileBox f = do
         SWF -> showFallback "swf.png"
         _ -> showThumb
     where
+        dimFormat :: Dimensions -> H.Html
         dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
-        link = H.toValue $ mconcat ["/media/", filename f]
+        link = "/media/" <> (H.toValue $ filename f)
         thumbLink = H.toValue $ fileThumbLink f
         showAudio = H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
             H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
@@ -60,7 +61,7 @@ fileBox f = do
 
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
-    H.div ! A.class_ "post" $ do
+    H.div ! A.class_ "post"  $ do
         H.div ! A.class_ "post-header" $ do
             H.span ! A.class_ "post-subject" $ H.toHtml $ postSubject
             space
@@ -70,15 +71,15 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-date" $ 
                 H.time ! A.datetime (H.toValue postDate) $ (H.toHtml postDate)
             space
-            H.span ! A.class_ "post-number" $ 
-                H.a ! A.href (mconcat ["#", postNumber]) $ 
-                    H.string $ mconcat ["No.", show $ number p]
+            H.span ! A.class_ "post-number" $ do
+                H.a ! A.href ("#" <> postNumber) $ "No."
+                H.a ! A.href "#postform" $ H.toHtml $ number p
         foldMap fileBox (file p)
         H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
-        emailTag = H.a ! A.class_ "post-email" ! A.href (H.toValue $ mconcat ["mailto:", postEmail])
-        postNumber = H.preEscapedToValue $ mconcat ["postid", show $ number p]
+        emailTag = H.a ! A.class_ "post-email" ! A.href ("mailto:" <> H.toValue postEmail)
+        postNumber = "postid" <> (H.toValue $ number p)
         postDate = formatTime defaultTimeLocale "%F %T" (date p)
         postAuthor = author $ content p
         postEmail = email $ content p
@@ -89,8 +90,6 @@ threadView :: Thread -> H.Html
 threadView (Thread h ps) = commonHtml $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
     H.hr ! A.class_ "invisible"
-    postForm $ Just $ number $ opPost h
-    H.hr 
-    H.div ! A.class_ "content" $ 
+    H.div ! A.class_ "shift-container" $ replyForm $ number $ opPost h
+    addTopBottom $ H.div ! A.class_ "content" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> (opPost h:ps)
-    H.hr

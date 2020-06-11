@@ -11,12 +11,20 @@ import Imageboard.Pages.Common
 import Imageboard.Types 
 import Imageboard.Markup
 
+catalogThumbnail :: Maybe File -> H.Html
+catalogThumbnail (Just f) = 
+    let thumbLink = H.toValue $ case ext f of
+            e | isAudio e -> "audio.png"
+            EPUB -> "epub.png"
+            SWF -> "swf.png"
+            _ -> fileThumbLink f
+    in H.img ! A.class_ "catalog-thumbnail" ! A.src thumbLink
+catalogThumbnail Nothing = "***"
+
 catalogThread :: ThreadHead -> H.Html
 catalogThread h = H.div ! A.class_ "catalog-thread" $ do
     H.div ! A.class_ "catalog-thread-link" $ H.a ! A.href threadLink $
-        case file $ opPost h of
-            Just f -> let thumbLink = H.toValue $ fileThumbLink f in H.img ! A.src thumbLink
-            Nothing -> "***"
+        catalogThumbnail $ file $ opPost h
     H.div ! A.class_ "thread-info" $ do
         --H.span ! class_ "thread-board-link" $ a ! href "/b" $ "/b/"
         H.span ! A.class_ "thread-info-replies" $ H.toHtml  ("R:" ++ (show $ replyCount $ opInfo h))
@@ -28,7 +36,7 @@ catalogThread h = H.div ! A.class_ "catalog-thread" $ do
     H.div ! A.class_ "catalog-thread-comment" $ H.preEscapedToHtml postText
     where
         p = opPost h
-        threadLink = H.toValue $ mconcat ["/", show $ number p]
+        threadLink = "/" <> (H.toValue $ number p)
         threadDate = formatTime defaultTimeLocale "%F %T" (lastBump $ opInfo h)
         postEmail = email $ content p
         postSubject = subject $ content p
@@ -38,9 +46,7 @@ catalogView :: [ThreadHead] -> H.Html
 catalogView ts = commonHtml $ do
     H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
     H.hr ! A.class_ "invisible"
-    postForm Nothing
-    H.hr 
-    H.div ! A.class_ "content" $ 
+    H.div ! A.class_ "shift-container" $ threadForm
+    addTopBottom $ H.div ! A.class_ "content" $
         H.div ! A.class_ "catalog-container" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts
-    H.hr
