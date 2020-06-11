@@ -90,6 +90,6 @@ threadView :: Thread -> H.Html
 threadView (Thread h ps) = commonHtml $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
     H.hr ! A.class_ "invisible"
-    H.div ! A.class_ "shift-container" $ replyForm $ number $ opPost h
+    replyForm $ number $ opPost h
     addTopBottom $ H.div ! A.class_ "content" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> (opPost h:ps)

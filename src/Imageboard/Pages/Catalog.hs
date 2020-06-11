@@ -46,7 +46,7 @@ catalogView :: [ThreadHead] -> H.Html
 catalogView ts = commonHtml $ do
     H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
     H.hr ! A.class_ "invisible"
-    H.div ! A.class_ "shift-container" $ threadForm
+    threadForm
     addTopBottom $ H.div ! A.class_ "content" $
         H.div ! A.class_ "catalog-container" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts
