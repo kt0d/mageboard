@@ -1,7 +1,23 @@
 --- TABLES ---------------------------------------------------------------------
 
+CREATE TABLE IF NOT EXISTS Boards (
+    Name            TEXT        NOT NULL    UNIQUE              CHECK(LENGTH(Name) BETWEEN 1 AND 8),
+    Title           TEXT        NOT NULL    UNIQUE              CHECK(LENGTH(Title) BETWEEN 1 AND 32),
+    Subtitle        TEXT        NOT NULL                        CHECK(LENGTH(Subtitle) <= 64),
+    MaxPostNumber   INTEGER     NOT NULL    DEFAULT 0           CHECK(MaxPostNumber >= 0),
+    Lock            BOOLEAN     NOT NULL    DEFAULT FALSE,
+    PostMinLength   INTEGER     NOT NULL    DEFAULT 1,
+    PostMaxLength   INTEGER     NOT NULL    DEFAULT 8192        CHECK(PostMaxLength <= 32768),
+    PostMaxNewlines INTEGER     NOT NULL    DEFAULT 64          CHECK(PostMaxNewlines <= 1024),
+    PostLimit       INTEGER     NOT NULL    DEFAULT 250,
+    ThreadLimit     INTEGER     NOT NULL    DEFAULT 100         CHECK(ThreadLimit BETWEEN 1 AND 1000),
+
+    PRIMARY KEY (Name)
+);
+
 CREATE TABLE IF NOT EXISTS Posts (
-    Number          INTEGER     NOT NULL,
+    Board           TEXT        NOT NULL,
+    Number          INTEGER                 DEFAULT NULL,
     Parent          INTEGER,
     Date            INTEGER     NOT NULL    DEFAULT 0,
     Name            TEXT        NOT NULL    DEFAULT 'Nameless'  CHECK(length(Name)    <= 64),
@@ -10,31 +26,24 @@ CREATE TABLE IF NOT EXISTS Posts (
     Text            TEXT        NOT NULL    DEFAULT ''          CHECK(length(Text)    <= 32768),
     FileId          INTEGER,
 
-    PRIMARY KEY (Number),
+    PRIMARY KEY (Board,Number),
+    FOREIGN KEY (Board,Parent) REFERENCES Posts (Board,Number) ON DELETE CASCADE,
     FOREIGN KEY (FileId) REFERENCES Files (Id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS ThreadInfo (
+    Board           TEXT        NOT NULL,
     Number          INTEGER     NOT NULL,
-    LastBump    		INTEGER 	  NOT NULL		DEFAULT 0,
-    Sticky		      BOOLEAN		  NOT NULL		DEFAULT FALSE,
-    Lock			      BOOLEAN		  NOT NULL		DEFAULT FALSE,
-    Autosage		    BOOLEAN		  NOT NULL		DEFAULT FALSE,
-    Cycle			      BOOLEAN		  NOT NULL		DEFAULT FALSE,
-    ReplyCount      INTEGER			NOT NULL    DEFAULT 0   	      CHECK(ReplyCount >= 0),
+    LastBump        INTEGER     NOT NULL    DEFAULT 0,
+    Sticky          BOOLEAN     NOT NULL    DEFAULT FALSE,
+    Lock            BOOLEAN     NOT NULL    DEFAULT FALSE,
+    Autosage        BOOLEAN     NOT NULL    DEFAULT FALSE,
+    Cycle           BOOLEAN     NOT NULL    DEFAULT FALSE,
+    ReplyCount      INTEGER     NOT NULL    DEFAULT 0           CHECK(ReplyCount >= 0),
 
-    PRIMARY KEY (Number),
-    FOREIGN KEY (Number) REFERENCES Posts (Number) ON DELETE CASCADE
+    PRIMARY KEY (Board,Number),
+    FOREIGN KEY (Board,Number) REFERENCES Posts (Board,Number) ON DELETE CASCADE
 );
-
--- CREATE TABLE IF NOT EXISTS FileRefs (
---     Number          INTEGER     NOT NULL,
---     File            TEXT        NOT NULL,
-
---     PRIMARY KEY (Number),
---     FOREIGN KEY (Number) REFERENCES Posts (Number),
---     FOREIGN KEY (File) REFERENCES Files (Name)
--- ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS Files (
     Id              INTEGER     NOT NULL,
@@ -72,12 +81,23 @@ CREATE TRIGGER IF NOT EXISTS bump_thread AFTER INSERT ON Posts
   WHEN NEW.Parent IS NOT NULL AND NEW.Email NOT LIKE '%sage%'
 BEGIN
   UPDATE ThreadInfo SET LastBump = STRFTIME('%s', 'now') 
-    WHERE Number = NEW.Parent AND Autosage = FALSE;
+    WHERE Number = NEW.Parent AND Board = NEW.Board AND Autosage = FALSE;
 END;
 
 CREATE TRIGGER IF NOT EXISTS increment_post_number AFTER INSERT ON Posts
+  WHEN NEW.PARENT IS NOT NULL
 BEGIN
-  UPDATE ThreadInfo SET ReplyCount = ReplyCount + 1 WHERE NEW.Parent = ThreadInfo.Number;
+  UPDATE Posts SET Number = (SELECT MaxPostNumber + 1 FROM Boards WHERE Name = NEW.Board) WHERE ROWID = NEW.ROWID;
+  UPDATE Boards SET MaxPostNumber = MaxPostNumber + 1 WHERE Name = NEW.Board;
+  UPDATE ThreadInfo SET ReplyCount = ReplyCount + 1 WHERE NEW.Parent = ThreadInfo.Number AND NEW.Board = ThreadInfo.Board;
+END;
+
+CREATE TRIGGER IF NOT EXISTS add_threadinfo AFTER INSERT ON Posts
+  WHEN NEW.Parent IS NULL
+BEGIN
+  UPDATE Posts SET Number = (SELECT MaxPostNumber + 1 FROM Boards WHERE Name = NEW.Board) WHERE ROWID = NEW.ROWID;
+  UPDATE Boards SET MaxPostNumber = MaxPostNumber + 1 WHERE Name = NEW.Board;
+  INSERT INTO ThreadInfo (Number, Board) VALUES ((SELECT MaxPostNumber FROM Boards WHERE Name = NEW.Board), NEW.Board);
 END;
 
 
@@ -96,9 +116,12 @@ END;
 CREATE VIEW IF NOT EXISTS posts_and_files
   AS
   SELECT
-    Posts.Parent,
+    Posts.Board,
     Posts.Number,
+    Posts.Parent,
+
     Posts.Date,
+
     Posts.Name,
     Posts.Email,
     Posts.Subject,

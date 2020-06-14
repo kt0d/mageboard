@@ -36,17 +36,17 @@ catalogThread h = H.div ! A.class_ "catalog-thread" $ do
     H.div ! A.class_ "catalog-thread-comment" $ H.preEscapedToHtml postText
     where
         p = opPost h
-        threadLink = "/" <> (H.toValue $ number p)
+        threadLink = "/" <> (H.toValue $ board $ loc p) <> "/" <> (H.toValue $ number $ loc p)
         threadDate = formatTime defaultTimeLocale "%F %T" (lastBump $ opInfo h)
         postEmail = email $ content p
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
-catalogView :: [ThreadHead] -> H.Html
-catalogView ts = commonHtml $ do
+catalogView :: Board -> [ThreadHead] -> H.Html
+catalogView b ts = commonHtml $ do
     H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
     H.hr ! A.class_ "invisible"
-    threadForm
+    threadForm b
     addTopBottom $ H.div ! A.class_ "content" $
         H.div ! A.class_ "catalog-container" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts

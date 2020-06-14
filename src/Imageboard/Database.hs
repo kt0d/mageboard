@@ -10,7 +10,9 @@ module Imageboard.Database (
     getThread,
     getThreads,
     checkThread,
-    getFileId
+    getFileId,
+    getConstraints,
+    getBoardNames
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -19,7 +21,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)), (:.)(..))
-import qualified Database.SQLite.Simple.FromRow as DB (RowParser, fieldWith)
+import qualified Database.SQLite.Simple.FromRow as DB
 import qualified Database.SQLite.Simple.FromField as DB (FieldParser, fieldData, returnError)
 import qualified Database.SQLite.Simple.Ok as DB (Ok(..))
 import qualified Database.SQLite.Simple.Time.Implementation as DB
@@ -49,8 +51,10 @@ mkThreadHead ::  Post :. ThreadInfo -> ThreadHead
 mkThreadHead (p :. i) = ThreadHead p i
 
 instance DB.FromRow Post where
-    fromRow = Post <$> DB.field 
-                    <*> DB.field
+    fromRow = Post  <$> (PostLocation
+                            <$> DB.field
+                            <*> DB.field
+                            <*> DB.field)
                     <*> DB.fieldWith parseDate 
                     <*> (Stub   
                         <$> DB.field 
@@ -75,6 +79,15 @@ instance DB.FromRow ThreadInfo where
                 <*> DB.field
                 <*> DB.field
 
+instance DB.FromRow BoardConstraints where
+    fromRow = Constraints
+                <$> DB.field
+                <*> DB.field 
+                <*> DB.field
+                <*> DB.field
+                <*> DB.field
+                <*> DB.field 
+
 -- | Create sqlite3 database file using schema file.
 setupDb :: IO ()
 setupDb = do
@@ -82,18 +95,6 @@ setupDb = do
     schema <- T.readFile schemaFile
     DirectDB.exec conn schema
     DirectDB.close conn
-
--- | Insert post with no file attached into database.
-insertPost :: Int -> PostStub -> IO Int -- ^ Post Id.
-insertPost p s = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Parent) \
-                        \VALUES (:name, :email, :subject, :text, :parent)" 
-                        [ ":name"       := author s
-                        , ":email"      := email s
-                        , ":subject"    := subject s
-                        , ":text"       := text s
-                        , ":parent"     := p]
-    fromIntegral <$> DB.lastInsertRowId c
 
 -- | Insert file information into database.
 insertFile :: File -> IO Int -- ^ File Id.
@@ -107,76 +108,96 @@ insertFile f = DB.withConnection postsDb $ \c -> do
                         , ":height" := height <$> dim f]
     fromIntegral <$> DB.lastInsertRowId c
 
+-- | Insert post with no file attached into database.
+insertPost :: Board -> Int -> PostStub -> IO () 
+insertPost b p s = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Parent, Board) \
+                        \VALUES (:name, :email, :subject, :text, :parent, :board)" 
+                        [ ":name"       := author s
+                        , ":email"      := email s
+                        , ":subject"    := subject s
+                        , ":text"       := text s
+                        , ":parent"     := p
+                        , ":board"      := b]
+
 -- | Insert post with file attached, using previously obtained file Id.
-insertPostWithFile :: Int -> PostStub -> Int -- ^ fileId 
-                    -> IO Int -- ^ Post Id.
-insertPostWithFile p s f = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Parent) \
-                        \VALUES (:name, :email, :subject, :text, :fileid, :parent)" 
+insertPostWithFile :: Board -> Int -> PostStub -> Int -- ^ fileId 
+                    -> IO () -- ^ Post Id.
+insertPostWithFile b p s f = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Parent, Board) \
+                        \VALUES (:name, :email, :subject, :text, :fileid, :parent, :board)" 
                         [ ":name"       := author s
                         , ":email"      := email s
                         , ":subject"    := subject s
                         , ":text"       := text s
                         , ":fileid"     := f
-                        , ":parent"     := p]
-    fromIntegral <$> DB.lastInsertRowId c
+                        , ":parent"     := p
+                        , ":board"      := b]
 
-insertThread :: PostStub -> IO Int
-insertThread s = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text) \
-                        \VALUES (:name, :email, :subject, :text)" 
-                        [ ":name"       := author s
-                        , ":email"      := email s
-                        , ":subject"    := subject s
-                        , ":text"       := text s]
-    n <- DB.lastInsertRowId c
-    DB.executeNamed c   "INSERT INTO ThreadInfo (Number) VALUES (:number)"
-                        [":number"      := n]
-    return $ fromIntegral n
-
-insertThreadWithFile :: PostStub -> Int -> IO Int
-insertThreadWithFile s f = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId) \
-                        \VALUES (:name, :email, :subject, :text, :fileid)" 
+insertThread :: Board -> PostStub -> IO ()
+insertThread b s = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Board) \
+                        \VALUES (:name, :email, :subject, :text, :board)" 
                         [ ":name"       := author s
                         , ":email"      := email s
                         , ":subject"    := subject s
                         , ":text"       := text s
-                        , ":fileid"     := f]
-    n <- DB.lastInsertRowId c
-    DB.executeNamed c   "INSERT INTO ThreadInfo (Number) VALUES (:number)"
-                        [":number"      := n]
-    return $ fromIntegral n
+                        , ":board"      := b]
 
--- | Obtain file Id of previously inserted file, giving its name.
+insertThreadWithFile :: Board -> PostStub -> Int -> IO ()
+insertThreadWithFile b s f = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Board) \
+                        \VALUES (:name, :email, :subject, :text, :fileid, :board)" 
+                        [ ":name"       := author s
+                        , ":email"      := email s
+                        , ":subject"    := subject s
+                        , ":text"       := text s
+                        , ":fileid"     := f
+                        , ":board"      := b]
+
+-- | Obtain ID of previously inserted file.
 getFileId :: Text -> IO (Maybe Int) -- ^ File Id, if given filename exists in database.
 getFileId name = DB.withConnection postsDb $ \c -> do
-    l <- DB.queryNamed c "SELECT Id FROM Files WHERE Name = :name" 
-        [":name" := name] :: IO [DB.Only Int]
+    l <- DB.queryNamed c    "SELECT Id FROM Files WHERE Name = :name" 
+                            [":name" := name] :: IO [DB.Only Int]
     return $ DB.fromOnly <$> listToMaybe l
 
 getPosts :: IO [Post]
 getPosts = DB.withConnection postsDb $ \c ->
     DB.query_ c "SELECT * FROM posts_and_files" 
 
-getThread :: Int -> IO (Either Text Thread)
-getThread n = DB.withConnection postsDb $ \c -> do
-    h <-  DB.queryNamed c "SELECT * FROM threads WHERE Number = :number" 
-        [":number" := n]
-    ps <- DB.queryNamed c   "SELECT * FROM posts_and_files WHERE posts_and_files.Parent = :number \
-                            \ORDER BY Number ASC"
-        [":number" := n] 
+getThread :: Board -> Int -> IO (Maybe Thread)
+getThread b n = DB.withConnection postsDb $ \c -> do
+    h <-  DB.queryNamed c   "SELECT * FROM threads WHERE Number = :number AND Board = :board" 
+                            [":number" := n, ":board" := b]
+    ps <- DB.queryNamed c   "SELECT * FROM posts_and_files WHERE Parent = :number \
+                            \AND Board = :board ORDER BY Number ASC"
+                            [":number" := n, ":board" := b] 
     case h of
-        [] -> return $ Left "No such thread"
-        x:_ -> return $ Right $ Thread (mkThreadHead x) ps
-checkThread :: Int -> IO Bool
-checkThread n = DB.withConnection postsDb $ \c -> do
-    h <-  DB.queryNamed c "SELECT EXISTS(SELECT 1 FROM threads WHERE Number = :number)" 
-        [":number" := n] :: IO [DB.Only Bool]
+        [] -> return $ Nothing
+        x:_ -> return $ Just $ Thread (mkThreadHead x) ps
+
+checkThread :: Board -> Int -> IO Bool
+checkThread b n = DB.withConnection postsDb $ \c -> do
+    h <-  DB.queryNamed c   "SELECT EXISTS\
+                            \(SELECT 1 FROM threads WHERE Number = :number AND Board = :board)" 
+                            [":number" := n, ":board" := b] :: IO [DB.Only Bool]
     return $ any DB.fromOnly h
 
-getThreads :: IO [ThreadHead]
-getThreads = DB.withConnection postsDb $ \c -> do
-    q <- DB.query_ c    "SELECT * FROM threads \
-                        \ORDER BY Sticky DESC, LastBump DESC" 
+getThreads :: Board -> IO [ThreadHead]
+getThreads b = DB.withConnection postsDb $ \c -> do
+    q <- DB.queryNamed c    "SELECT * FROM threads WHERE Board = :board \
+                            \ORDER BY Sticky DESC, LastBump DESC" 
+                            [":board" := b]
     return $ map mkThreadHead q
+
+getConstraints :: Board -> IO (Maybe BoardConstraints)
+getConstraints b = DB.withConnection postsDb $ \c -> do
+    bc <- DB.queryNamed c   "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
+                            \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
+                            [":board" := b] :: IO [BoardConstraints]
+    return $  listToMaybe bc
+
+getBoardNames :: IO [Board]
+getBoardNames = DB.withConnection postsDb $ \c -> do
+    (fmap . fmap) DB.fromOnly $ DB.query_ c "SELECT Name From Boards"

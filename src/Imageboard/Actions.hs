@@ -1,12 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Imageboard.Actions (
     createPost,
+    createThread,
     blaze
 ) where
 import Control.Monad.Except
 import Data.Maybe
+import Data.Foldable (fold)
 import Data.Text (Text)
-import qualified Data.Text.Lazy as Lazy (Text, pack, empty)
+import qualified Data.Text.Lazy as Lazy (Text, pack, empty, fromStrict)
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
 import qualified Network.Wai.Parse as N (FileInfo(..))
@@ -30,14 +32,15 @@ maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
 maybeFile :: S.ActionM (Maybe FileData)
 maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$> S.files 
 
-tryMkStub :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Bool ->  Either Text PostStub
-tryMkStub a e s t hasFile
-    | postText    #< 5 && not hasFile   = Left "Post text too short"
-    | postText    #> 500                = Left "Post text too long"
-    | postEmail   #> 320                = Left "Email too long"
-    | postSubject #> 128                = Left "Subject too long"
-    | postAuthor  #> 64                 = Left "Author name too long"
-    | T.count "\n" postText > 20        = Left "Too many newlines in post text"
+tryMkStub :: BoardConstraints -> Bool -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text ->  Either Text PostStub
+tryMkStub Constraints{..} hasFile a e s t
+    | isLocked  = Left "Board is locked"
+    | postText    #< minLen && not hasFile  = Left "Post text too short"
+    | postText    #> maxLen                 = Left "Post text too long"
+    | postEmail   #> 320                    = Left "Email too long"
+    | postSubject #> 128                    = Left "Subject too long"
+    | postAuthor  #> 64                     = Left "Author name too long"
+    | T.count "\n" postText > maxNewLines   = Left "Too many newlines in post text"
     | otherwise = Right $ Stub postAuthor postEmail postSubject postText
     where
         x #< y = T.compareLength x y == LT
@@ -45,9 +48,9 @@ tryMkStub a e s t hasFile
         postAuthor  = case a of
             Just name | not $ T.null name -> name
             _ -> "Nameless"
-        postEmail   = fromMaybe "" e
-        postSubject = fromMaybe "" s
-        postText    = fromMaybe "" t
+        postEmail   = fold e
+        postSubject = fold s
+        postText    = fold t
 
 tryInsertFile :: FileData -> ExceptT Text IO Int
 tryInsertFile fdata = do
@@ -59,45 +62,64 @@ tryInsertFile fdata = do
             newF <- saveFile f fdata fPath
             liftIO $ insertFile newF
 
-tryInsertThread :: PostStub -> Maybe FileData -> ExceptT Text IO Int
-tryInsertThread stub mdata = case mdata of
+tryInsertThread :: Board -> PostStub -> Maybe FileData -> ExceptT Text IO ()
+tryInsertThread b stub mdata = case mdata of
     Just fdata -> do
         fileId <- tryInsertFile fdata
-        liftIO $ insertThreadWithFile stub fileId
+        liftIO $ insertThreadWithFile b stub fileId
     Nothing -> 
-        liftIO $ insertThread stub 
+        liftIO $ insertThread b stub 
 
-tryInsertPost :: Int -> PostStub -> Maybe FileData -> ExceptT Text IO Int
-tryInsertPost p stub mdata = case mdata of
+tryInsertPost :: Board -> Int -> PostStub -> Maybe FileData -> ExceptT Text IO ()
+tryInsertPost b p stub mdata = case mdata of
     Just fdata -> do
         fileId <- tryInsertFile fdata
-        liftIO $ insertPostWithFile p stub fileId
+        liftIO $ insertPostWithFile b p stub fileId
     Nothing -> 
-        liftIO $ insertPost p stub 
+        liftIO $ insertPost b p stub 
 
+validatePost :: Board -> Bool -> S.ActionM (Either Text PostStub)
+validatePost b hasFile = do
+    cs <- liftIO $ getConstraints b
+    case cs of
+        Nothing -> return $ Left "Board does not exist"
+        Just x -> tryMkStub x hasFile
+            <$> maybeParam "name"
+            <*> maybeParam "email"
+            <*> maybeParam "subject"
+            <*> maybeParam "comment"
 
 -- | This action will try to insert post sent by the user.
 -- In case of failure it will send user appropriate error page.
-createPost :: Maybe Int -> S.ActionM ()
-createPost p = do 
-    postAuthor  <- maybeParam "name"
-    postEmail   <- maybeParam "email"
-    postSubject <- maybeParam "subject"
-    postText    <- maybeParam "comment" 
-    postFile    <- maybeFile
+createPost :: Board -> Int -> S.ActionM ()
+createPost b p = do 
+    postFile <- maybeFile
+    stubErr <- validatePost b $ isJust postFile
     result <- liftIO $ runExceptT $ do 
-        stub <- liftEither $ tryMkStub postAuthor postEmail postSubject postText (isJust postFile)
-        case p of
-            Just n -> do
-                exists <- liftIO $ checkThread n
-                if exists 
-                    then tryInsertPost n stub postFile
-                    else throwError "Thread does not exist"
-            Nothing -> tryInsertThread stub postFile
+        stub <- liftEither $ stubErr
+        exists <- liftIO $ checkThread b p
+        if exists 
+            then tryInsertPost b p stub postFile
+            else throwError "Thread does not exist"
     case result of
         Left msg -> do
             S.status badRequest400
             blaze $ errorView msg
         Right _ -> do
             S.status created201
-            S.redirect $ "/" <> fromMaybe Lazy.empty (Lazy.pack <$> show <$> p)
+            S.redirect $ "/" <> Lazy.fromStrict b <> "/" <> (Lazy.pack $ show p)
+
+createThread :: Board -> S.ActionM ()
+createThread b = do
+    postFile <- maybeFile
+    stubErr <- validatePost b $ isJust postFile
+    result <- liftIO $ runExceptT $ do 
+        stub <- liftEither $ stubErr
+        tryInsertThread b stub postFile
+    case result of
+        Left msg -> do
+            S.status badRequest400
+            blaze $ errorView msg
+        Right _ -> do
+            S.status created201
+            S.redirect $ "/" <> Lazy.fromStrict b

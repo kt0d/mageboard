@@ -73,13 +73,13 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             space
             H.span ! A.class_ "post-number" $ do
                 H.a ! A.href ("#" <> postNumber) $ "No."
-                H.a ! A.href "#postform" $ H.toHtml $ number p
+                H.a ! A.href "#postform" $ H.toHtml $ number $ loc p
         foldMap fileBox (file p)
         H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
         emailTag = H.a ! A.class_ "post-email" ! A.href ("mailto:" <> H.toValue postEmail)
-        postNumber = "postid" <> (H.toValue $ number p)
+        postNumber = "postid" <> (H.toValue $ number $ loc p)
         postDate = formatTime defaultTimeLocale "%F %T" (date p)
         postAuthor = author $ content p
         postEmail = email $ content p
@@ -90,6 +90,7 @@ threadView :: Thread -> H.Html
 threadView (Thread h ps) = commonHtml $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
     H.hr ! A.class_ "invisible"
-    replyForm $ number $ opPost h
+    case (loc $ opPost h) of 
+        (PostLocation b n _) -> replyForm b n
     addTopBottom $ H.div ! A.class_ "content" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> (opPost h:ps)

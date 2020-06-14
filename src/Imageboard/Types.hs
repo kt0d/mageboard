@@ -7,7 +7,9 @@ module Imageboard.Types (
     Dimensions(..),
     ThreadInfo(..),
     ThreadHead(..),
-    Thread(..)
+    Thread(..),
+    PostLocation(..),
+    Board, BoardInfo(..), BoardConstraints(..)
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
@@ -56,9 +58,33 @@ instance Enum FileType where
     toEnum      9       = SWF
     toEnum      _       = errorWithoutStackTrace "Enum.FileType: bad argument"
 
+type Board = Text
+
+data BoardInfo = BoardInfo {
+        name :: Board
+    ,   title :: Text
+    ,   subtitle :: Text
+    ,   postNum :: Int
+    ,   constraints :: BoardConstraints
+} deriving (Show)
+
+data BoardConstraints = Constraints {
+        isLocked :: Bool
+    ,   minLen :: Int
+    ,   maxLen :: Int
+    ,   maxNewLines :: Int
+    ,   maxReplies :: Int
+    ,   maxThreads :: Int
+} deriving (Show)
+
+data PostLocation = PostLocation {
+        board :: Board
+    ,   number :: Int -- ^ Post number, unique on board.
+    ,   parent :: Maybe Int
+} deriving (Show)
+
 data Post = Post {  
-        parent :: Maybe Int
-    ,   number :: Int   -- ^ Post number, unique on board.
+        loc :: PostLocation
     ,   date :: UTCTime -- ^ UTC date of post creation.
     ,   content :: PostStub 
     ,   file :: Maybe File -- ^ File if attached.

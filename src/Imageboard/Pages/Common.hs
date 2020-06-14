@@ -14,7 +14,7 @@ import qualified Data.Text as T
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Imageboard.Types (ThreadInfo(..), File(..), isImage)
+import Imageboard.Types (ThreadInfo(..), File(..), isImage, Board)
 
 flagsToText :: ThreadInfo -> Text
 flagsToText ti = 
@@ -79,18 +79,20 @@ addTopBottom c = do
         space
         H.a ! A.href "#postform" $ "[Open form]"
 
-threadForm :: H.Html
-threadForm = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset $ H.form !
-    A.action "/post" ! A.method "post" ! A.enctype "multipart/form-data" $ do
-        postFormTable
-
-replyForm :: Int -> H.Html
-replyForm n = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset $ H.form !
+threadForm :: Board -> H.Html
+threadForm b = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset $ H.form !
     A.action postUrl ! A.method "post" ! A.enctype "multipart/form-data" $ do
         postFormTable
-        H.input ! A.type_ "hidden" ! A.name "parent" ! A.value (H.toValue n)
+    where
+        postUrl = "/post/" <> H.toValue b 
+    
+
+replyForm :: Board -> Int -> H.Html
+replyForm b n = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset $ H.form !
+    A.action postUrl ! A.method "post" ! A.enctype "multipart/form-data" $ do
+        postFormTable
     where 
-        postUrl = "/post/" <> H.toValue n
+        postUrl = "/post/" <> H.toValue b <> "/" <> H.toValue n
 
 postFormTable :: H.Html
 postFormTable = H.table $ H.tbody $ do
