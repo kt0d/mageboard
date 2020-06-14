@@ -6,8 +6,7 @@ module Imageboard.Pages.Common (
     addTopBottom,
     threadForm,
     replyForm,
-    fileThumbLink,
-    navBar
+    fileThumbLink
 ) where
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -33,22 +32,26 @@ fileThumbLink :: File -> Text
 fileThumbLink f = mconcat ["/media/thumb/"
     , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
 
-commonHtml :: H.Html -> H.Html
-commonHtml c = H.docTypeHtml $ do
+commonHtml :: [Board] -> H.Html -> H.Html
+commonHtml bs c = H.docTypeHtml $ do
     H.head $
         H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
     H.body $ do
         H.a ! A.id "top-of-page" $ mempty
-        navBar
+        navBar bs
         c
         H.a ! A.id "bottom-of-page" $ mempty
 
-navBar :: H.Html
-navBar = H.div ! A.id "topbar" $ 
+navBar :: [Board] -> H.Html
+navBar bs = H.div ! A.id "topbar" $ 
     H.nav ! A.id "topnav" $ do
         H.ul ! A.id "navigation" $ do
             H.li $ H.a ! A.href "/" $ "home"
             H.li $ H.a ! A.href "/recent" $ "recent"
+        
+        H.ul ! A.id "board-navigation" $
+            flip foldMap bs $ \b -> H.li $ H.a ! A.href ("/" <> H.toValue b) $ H.text b
+
         H.ul ! A.id "shortcuts" $ do
             H.li $ H.details ! A.id "infobox" $ do
                 H.summary "info"

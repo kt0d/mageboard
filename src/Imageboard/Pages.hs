@@ -14,6 +14,6 @@ import Imageboard.Pages.Thread
 
 -- | Create error page with given text as error text.
 errorView :: Text -> H.Html
-errorView msg = commonHtml $ do
+errorView msg = commonHtml [] $ do
     H.div ! A.class_ "content" $
         H.div ! A.class_ "container narrow" $ H.text msg

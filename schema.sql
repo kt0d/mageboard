@@ -146,4 +146,5 @@ CREATE VIEW IF NOT EXISTS threads
     ThreadInfo.Cycle,
     ThreadInfo.ReplyCount
   FROM ThreadInfo
-  JOIN posts_and_files on posts_and_files.Number = ThreadInfo.Number;
+  JOIN posts_and_files ON posts_and_files.Number = ThreadInfo.Number 
+  AND posts_and_files.Board = ThreadInfo.Board;

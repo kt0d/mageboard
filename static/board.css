@@ -16,6 +16,10 @@ a, summary {
     text-decoration: none;
 }
 
+ul {
+    list-style-type: square;
+}
+
 a:hover, summary:hover {
     text-decoration: underline slategray;
     cursor: pointer;
@@ -173,6 +177,7 @@ div.post-comment {
 }
 
 div.post-file-info {
+    background-color: #b5e8e8;
     font-size: 12px;
     margin-top: -5px;
 }
@@ -281,6 +286,26 @@ div#topbar>nav#topnav>ul {
 
 ul#shortcuts {
     float: right;
+}
+
+#board-navigation :before, :after {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+#board-navigation li:first-child:before {
+    content: "[";
+    padding-right: 10px;
+}
+
+#board-navigation li:last-child::after {
+    content: "]";
+    padding-left: 10px;
+}
+
+ul#board-navigation li + li:before {
+    content: "/";
+    padding-right: 10px;
 }
 
 div#topbar>nav#topnav>ul>li {

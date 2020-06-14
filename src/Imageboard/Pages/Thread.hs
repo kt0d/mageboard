@@ -86,8 +86,8 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
-threadView :: Thread -> H.Html
-threadView (Thread h ps) = commonHtml $ do 
+threadView :: [Board] -> Thread -> H.Html
+threadView bs (Thread h ps) = commonHtml bs $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
     H.hr ! A.class_ "invisible"
     case (loc $ opPost h) of 

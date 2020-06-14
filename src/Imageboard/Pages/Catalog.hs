@@ -42,8 +42,8 @@ catalogThread h = H.div ! A.class_ "catalog-thread" $ do
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
-catalogView :: Board -> [ThreadHead] -> H.Html
-catalogView b ts = commonHtml $ do
+catalogView :: [Board] -> Board -> [ThreadHead] -> H.Html
+catalogView bs b ts = commonHtml bs $ do
     H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
     H.hr ! A.class_ "invisible"
     threadForm b

@@ -22,15 +22,21 @@ main = do
             board <- S.param "board"
             threads <- liftIO $ getThreads board
             bs <- liftIO $ getBoardNames
-            blaze $ catalogView board threads
+            if board `elem` bs
+                then blaze $ catalogView bs board threads
+                else do
+                    S.status notFound404
+                    blaze $ errorView "Board does not exist"
         S.get "/:board/:number" $ do
             board <- S.param "board"
             num <- S.param "number"
             e <- liftIO $ getThread board num
             bs <- liftIO $ getBoardNames 
-            blaze $ case e of
-                Nothing -> errorView "Thread does not exist"
-                Just t -> threadView t
+            case e of
+                Nothing -> blaze $ errorView "Thread does not exist"
+                Just t -> do
+                    S.status notFound404
+                    blaze $ threadView bs t
         S.post "/post/:board" $ do
             board <- S.param "board"
             createThread board
