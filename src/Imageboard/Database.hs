@@ -162,9 +162,10 @@ getFileId name = DB.withConnection postsDb $ \c -> do
                             [":name" := name] :: IO [DB.Only Int]
     return $ DB.fromOnly <$> listToMaybe l
 
-getPosts :: IO [Post]
-getPosts = DB.withConnection postsDb $ \c ->
-    DB.query_ c "SELECT * FROM posts_and_files" 
+getPosts :: Int -> IO [Post]
+getPosts n = DB.withConnection postsDb $ \c ->
+    DB.queryNamed c     "SELECT * FROM posts_and_files ORDER BY Date DESC LIMIT :n" 
+                        [":n" := n]
 
 getThread :: Board -> Int -> IO (Maybe Thread)
 getThread b n = DB.withConnection postsDb $ \c -> do

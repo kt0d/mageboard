@@ -3,6 +3,7 @@ module Imageboard.Pages (
     errorView,
     module Imageboard.Pages.Catalog,
     module Imageboard.Pages.Thread,
+    module Imageboard.Pages.Recent,
 ) where
 import Data.Text (Text)
 import Text.Blaze.Html5((!))
@@ -11,6 +12,7 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Imageboard.Pages.Common
 import Imageboard.Pages.Catalog
 import Imageboard.Pages.Thread
+import Imageboard.Pages.Recent
 
 -- | Create error page with given text as error text.
 errorView :: Text -> H.Html

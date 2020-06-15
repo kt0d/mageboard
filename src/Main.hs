@@ -8,7 +8,7 @@ import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 
 import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNames)
-import Imageboard.Pages (catalogView, threadView, errorView)
+import Imageboard.Pages (catalogView, threadView, errorView, recentView)
 import Imageboard.Actions
 
 
@@ -18,6 +18,10 @@ main = do
     S.scotty 3000 $ do
         S.middleware Wai.logStdoutDev
         S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
+        S.get "/recent" $ do
+            bs <- liftIO $ getBoardNames
+            ps <- liftIO $ getPosts 100
+            blaze $ recentView bs ps
         S.get "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board

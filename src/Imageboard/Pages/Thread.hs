@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Imageboard.Pages.Thread (
-    threadView
+    threadView,
+    postView
 ) where
 import Data.Text (Text)
 import qualified Data.Text as T
