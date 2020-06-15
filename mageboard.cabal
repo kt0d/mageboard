@@ -21,6 +21,7 @@ executable mageboard
     Imageboard.Pages.Common
     Imageboard.Pages.Thread
     Imageboard.Pages.Catalog
+    Imageboard.Pages.Recent
     Imageboard.Database
     Imageboard.Types
     Imageboard.Markup

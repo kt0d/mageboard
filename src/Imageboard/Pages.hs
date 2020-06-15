@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Imageboard.Pages (
+    homePage,
     errorView,
     module Imageboard.Pages.Catalog,
     module Imageboard.Pages.Thread,
@@ -13,9 +14,20 @@ import Imageboard.Pages.Common
 import Imageboard.Pages.Catalog
 import Imageboard.Pages.Thread
 import Imageboard.Pages.Recent
-
+import Imageboard.Types (Board)
 -- | Create error page with given text as error text.
 errorView :: Text -> H.Html
 errorView msg = commonHtml [] $ do
     H.div ! A.class_ "content" $
         H.div ! A.class_ "container narrow" $ H.text msg
+
+homePage :: [Board] -> H.Html
+homePage bs = commonHtml bs $ do
+    H.h1 "Welcome"
+    H.div ! A.class_ "container narrow" $ do
+        H.h2 "Boards" 
+        H.ul $
+            flip foldMap bs $ \b -> 
+                H.li $ do
+                    H.a ! A.href ("/" <> H.toValue b) $ H.text b
+                    " - "

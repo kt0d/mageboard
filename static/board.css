@@ -12,12 +12,12 @@ body {
 }
 
 a, summary {
-    color: slategray;
+    color: darkslategray;
     text-decoration: none;
 }
 
 ul {
-    list-style-type: square;
+    list-style-type: katakana;
 }
 
 a:hover, summary:hover {
@@ -42,6 +42,16 @@ div.container {
 
 div.container.narrow {
     max-width: 670px;
+}
+
+h1 {
+    background: turquoise;
+    text-align: center;
+}
+
+h2 {
+    background: turquoise;
+    padding-left: 10pt;
 }
 
 /*** Posting forms ***/
@@ -116,6 +126,7 @@ form input[type="submit"] {
 
 form input[type="file"] {
     width: 100%;
+    max-width: 400px;
 }
 
 /*** Post style ***/
@@ -316,12 +327,6 @@ div#topbar>nav#topnav>ul>li {
 
 /*** Info box ***/
 
-/* details#infobox {
-
-}
-details#infobox > summary {
-} */
-
 div.infobox-content {
     top: 30px;
     right: 5px;
@@ -336,4 +341,18 @@ div.infobox-content {
     word-wrap: break-word;
     resize: both;
     overflow: auto;
+}
+
+/** Recent page **/
+
+a.recent-threadlink {
+    position: relative;
+    display: block;
+    color: darkred;
+    font-size: 14pt;;
+    background-color: gray;
+    width: 100%;
+}
+a.recent-threadlink::after {
+    content: "↴";
 }

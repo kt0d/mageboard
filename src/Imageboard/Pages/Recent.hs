@@ -16,12 +16,12 @@ import Imageboard.Pages.Common
 import Imageboard.Pages.Thread (postView)
 
 linkToPost :: PostLocation -> Text
-linkToPost (PostLocation b n Nothing) = b <> "/" <> (T.pack $ show n)
-linkToPost (PostLocation b _ (Just p)) = b <> "/" <> (T.pack $ show p)
+linkToPost (PostLocation b n Nothing) = "/" <> b <> "/" <> (T.pack $ show n)
+linkToPost (PostLocation b _ (Just p)) = "/" <> b <> "/" <> (T.pack $ show p)
 
 recentPostView :: Post -> H.Html
 recentPostView p = do
-    H.a ! A.href (H.toValue link) $ H.text link
+    H.a ! A.class_ "recent-threadlink" ! A.href (H.toValue link) $ H.text link
     postView p
     where link = linkToPost $ loc p
 
