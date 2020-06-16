@@ -7,7 +7,7 @@ import qualified Network.Wai.Middleware.Static as Wai
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 
-import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNames)
+import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNames,getBoardInfos)
 import Imageboard.Pages (catalogView, threadView, errorView, recentView, homePage)
 import Imageboard.Actions
 
@@ -19,7 +19,7 @@ main = do
         S.middleware Wai.logStdoutDev
         S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
         S.get "/" $ do
-            bs <- liftIO $ getBoardNames
+            bs <- liftIO $ getBoardInfos
             blaze $ homePage bs
         S.get "/recent" $ do
             bs <- liftIO $ getBoardNames

@@ -64,8 +64,6 @@ data BoardInfo = BoardInfo {
         name :: Board
     ,   title :: Text
     ,   subtitle :: Text
-    ,   postNum :: Int
-    ,   constraints :: BoardConstraints
 } deriving (Show)
 
 data BoardConstraints = Constraints {

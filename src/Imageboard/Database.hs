@@ -12,7 +12,8 @@ module Imageboard.Database (
     checkThread,
     getFileId,
     getConstraints,
-    getBoardNames
+    getBoardNames,
+    getBoardInfos
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -87,6 +88,9 @@ instance DB.FromRow BoardConstraints where
                 <*> DB.field
                 <*> DB.field
                 <*> DB.field 
+
+instance DB.FromRow BoardInfo where
+    fromRow = BoardInfo <$> DB.field <*> DB.field <*> DB.field 
 
 -- | Create sqlite3 database file using schema file.
 setupDb :: IO ()
@@ -202,3 +206,7 @@ getConstraints b = DB.withConnection postsDb $ \c -> do
 getBoardNames :: IO [Board]
 getBoardNames = DB.withConnection postsDb $ \c -> do
     (fmap . fmap) DB.fromOnly $ DB.query_ c "SELECT Name From Boards"
+
+getBoardInfos :: IO [BoardInfo]
+getBoardInfos = DB.withConnection postsDb $ \c -> do
+    DB.query_ c "SELECT Name, Title, Subtitle From Boards"
