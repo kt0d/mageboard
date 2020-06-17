@@ -9,7 +9,9 @@ module Imageboard.Types (
     ThreadHead(..),
     Thread(..),
     PostLocation(..),
-    Board, BoardInfo(..), BoardConstraints(..)
+    Board, BoardInfo(..), BoardConstraints(..),
+    Username, AccountInfo(..), Role(..),
+    SessionKey
 ) where
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
@@ -59,6 +61,24 @@ instance Enum FileType where
     toEnum      _       = errorWithoutStackTrace "Enum.FileType: bad argument"
 
 type Board = Text
+type SessionKey = Text
+type Username = Text
+
+data Role = Admin | Moderator deriving (Show)
+instance Enum Role where
+    fromEnum    Admin       = 0
+    fromEnum    Moderator   = 1
+
+    toEnum      0           = Admin
+    toEnum      1           = Moderator
+    toEnum      _           = errorWithoutStackTrace "Enum.Role: bad argument"
+
+
+data AccountInfo = AccountInfo {
+        user :: Username
+    ,   accountCreated :: UTCTime
+    ,   role :: Role
+}
 
 data BoardInfo = BoardInfo {
         name :: Board

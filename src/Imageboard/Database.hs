@@ -16,6 +16,8 @@ module Imageboard.Database (
     getBoardInfos,
     getPasswordHash,
     insertSessionToken,
+    removeSessionToken,
+    getAccountByToken,
     checkSession
 ) where
 import Control.Monad (liftM2, liftM4)
@@ -96,6 +98,12 @@ instance DB.FromRow BoardConstraints where
 instance DB.FromRow BoardInfo where
     fromRow = BoardInfo <$> DB.field <*> DB.field <*> DB.field 
 
+instance DB.FromRow AccountInfo where
+    fromRow = AccountInfo 
+                <$> DB.field 
+                <*> DB.fieldWith parseDate
+                <*> (toEnum <$> DB.field) 
+
 -- | Create sqlite3 database file using schema file.
 setupDb :: IO ()
 setupDb = do
@@ -106,7 +114,7 @@ setupDb = do
     -- Insert default admin account.
     DB.executeNamed (DB.Connection conn)   
         "INSERT OR IGNORE INTO Accounts (Username, Password, Role) \
-        \VALUES (:user, :hash, 'admin')"
+        \VALUES (:user, :hash, 0)"
         [ ":user" := ("admin" :: Text)
         , ":hash" := unPasswordHash hash] 
     DirectDB.close conn
@@ -244,8 +252,23 @@ insertSessionToken a t = DB.withConnection postsDb $ \c -> do
                         [ ":name"   := a
                         , ":token"  := t]
 
+removeSessionToken :: Text -> IO ()
+removeSessionToken t = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "DELETE FROM Sessions WHERE Username = \
+                        \(SELECT Username FROM Sessions WHERE Key = :token)" 
+                        [ ":token"  := t]
+
 checkSession :: Text -> IO Bool
 checkSession t = DB.withConnection postsDb $ \c -> do
-    q <- DB.queryNamed c   "SELECT 1 FROM Sessions WHERE Key = :token"
+    q <- DB.queryNamed c    "SELECT EXISTS(SELECT * FROM Sessions WHERE Key = :token \
+                            \AND ExpireDate > STRFTIME('%s', 'now'))"
                             [":token" := t]  :: IO [DB.Only Bool]
     return $ any DB.fromOnly q
+
+getAccountByToken :: Text -> IO (Maybe AccountInfo)
+getAccountByToken t = DB.withConnection postsDb $ \c -> do
+    q <- DB.queryNamed c    "SELECT Accounts.Username, CreationDate, Role \
+                            \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
+                            \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
+                            [":token" := t]
+    return $ listToMaybe q

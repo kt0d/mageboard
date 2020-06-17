@@ -26,10 +26,9 @@ main = do
             bs <- liftIO $ getBoardNames
             ps <- liftIO $ getPosts 100
             blaze $ recentView bs ps
-        S.get "/mod" $ do
-            modPage
-        S.post "/login" $ do
-            tryLogin
+        S.get "/mod"        $ modPage
+        S.post "/login"     $ tryLogin
+        S.post "/logout"    $ logout
         S.get "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board

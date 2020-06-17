@@ -6,7 +6,7 @@ import qualified Data.List as List
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Data.Time.Format (formatTime, defaultTimeLocale)
+import Data.Time (defaultTimeLocale)
 import Imageboard.Pages.Common
 import Imageboard.Types 
 import Imageboard.Markup
@@ -37,7 +37,7 @@ catalogThread h = H.div ! A.class_ "catalog-thread" $ do
     where
         p = opPost h
         threadLink = "/" <> (H.toValue $ board $ loc p) <> "/" <> (H.toValue $ number $ loc p)
-        threadDate = formatTime defaultTimeLocale "%F %T" (lastBump $ opInfo h)
+        threadDate = formatDate defaultTimeLocale (lastBump $ opInfo h)
         postEmail = email $ content p
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p

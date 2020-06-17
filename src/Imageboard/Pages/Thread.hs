@@ -10,7 +10,7 @@ import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.Printf (printf)
-import Data.Time.Format (formatTime, defaultTimeLocale)
+import Data.Time (defaultTimeLocale)
 import Imageboard.Types
 import Imageboard.Markup
 import Imageboard.Pages.Common
@@ -81,7 +81,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     where  
         emailTag = H.a ! A.class_ "post-email" ! A.href ("mailto:" <> H.toValue postEmail)
         postNumber = "postid" <> (H.toValue $ number $ loc p)
-        postDate = formatTime defaultTimeLocale "%F %T" (date p)
+        postDate = formatDate defaultTimeLocale $ date p
         postAuthor = author $ content p
         postEmail = email $ content p
         postSubject = subject $ content p

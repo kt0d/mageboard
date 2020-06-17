@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Imageboard.Auth (
     modPage,
-    tryLogin
+    tryLogin,
+    logout
 ) where
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Base64 as Base64
@@ -12,7 +13,7 @@ import qualified Web.Scotty as S
 import qualified Web.Scotty.Cookie as SC
 import qualified Data.Password.Bcrypt as P
 import Crypto.Random (getRandomBytes)
-import Imageboard.Pages (errorView, loginView)
+import Imageboard.Pages (errorView, loginView, loggedInPage)
 import Imageboard.Actions (blaze)
 import Imageboard.Database
 
@@ -25,10 +26,10 @@ modPage = do
     case key of
         Nothing -> blaze $ loginView
         Just k -> do
-            isValid <- liftIO $ checkSession k
-            if isValid
-                then S.text $ ("You are logged in, " <> Lazy.fromStrict k)
-                else SC.deleteCookie "session-token" >> S.text "Your session token is invalid or expired"
+            account <- liftIO $ getAccountByToken k
+            case account of
+                Just a -> blaze $ loggedInPage a
+                Nothing -> SC.deleteCookie "session-token" >> S.text "Your session token is invalid or expired"
 
 tryLogin :: S.ActionM ()
 tryLogin = do
@@ -44,3 +45,13 @@ tryLogin = do
                     S.redirect "/mod"
                 _ -> S.text $ "Wrong password"
         Nothing -> S.text $ "Wrong username"
+
+logout :: S.ActionM ()
+logout = do
+    key <- SC.getCookie "session-token"
+    case key of 
+        Nothing -> S.redirect "/"
+        Just k -> do
+            liftIO $ removeSessionToken k
+            SC.deleteCookie "session-token" 
+            S.redirect "/"

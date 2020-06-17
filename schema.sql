@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS Files (
 CREATE TABLE IF NOT EXISTS Accounts (
     Username        TEXT        NOT NULL,
     Password        TEXT        NOT NULL,
-    Role            TEXT        NOT NULL                        CHECK(Role IN ('admin','moderator')),
+    Role            INTEGER     NOT NULL,
     CreationDate    INTEGER     NOT NULL    DEFAULT 0,
     PRIMARY KEY (Username)
 );

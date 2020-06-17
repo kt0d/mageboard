@@ -6,14 +6,19 @@ module Imageboard.Pages.Common (
     addTopBottom,
     threadForm,
     replyForm,
-    fileThumbLink
+    fileThumbLink,
+    formatDate
 ) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
+import Data.Time (formatTime, UTCTime, TimeLocale)
 import Imageboard.Types (ThreadInfo(..), File(..), isImage, Board)
+
+formatDate :: TimeLocale -> UTCTime -> String
+formatDate l = formatTime l "%F %T"
 
 flagsToText :: ThreadInfo -> Text
 flagsToText ti = 
