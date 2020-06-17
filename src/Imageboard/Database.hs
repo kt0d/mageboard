@@ -13,7 +13,10 @@ module Imageboard.Database (
     getFileId,
     getConstraints,
     getBoardNames,
-    getBoardInfos
+    getBoardInfos,
+    getPasswordHash,
+    insertSessionToken,
+    checkSession
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -29,6 +32,7 @@ import qualified Database.SQLite.Simple.Time.Implementation as DB
 import qualified Database.SQLite3 as DirectDB (open, close, exec)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Data.Password.Bcrypt as P (hashPassword, PasswordHash(..),Bcrypt)
 import Debug.Trace
 import Imageboard.Types
 
@@ -98,7 +102,15 @@ setupDb = do
     conn <- DirectDB.open $ T.pack postsDb
     schema <- T.readFile schemaFile
     DirectDB.exec conn schema
+    hash <- P.hashPassword "password"
+    -- Insert default admin account.
+    DB.executeNamed (DB.Connection conn)   
+        "INSERT OR IGNORE INTO Accounts (Username, Password, Role) \
+        \VALUES (:user, :hash, 'admin')"
+        [ ":user" := ("admin" :: Text)
+        , ":hash" := unPasswordHash hash] 
     DirectDB.close conn
+
 
 -- | Insert file information into database.
 insertFile :: File -> IO Int -- ^ File Id.
@@ -204,9 +216,36 @@ getConstraints b = DB.withConnection postsDb $ \c -> do
     return $  listToMaybe bc
 
 getBoardNames :: IO [Board]
-getBoardNames = DB.withConnection postsDb $ \c -> do
+getBoardNames = DB.withConnection postsDb $ \c ->
     (fmap . fmap) DB.fromOnly $ DB.query_ c "SELECT Name From Boards"
 
 getBoardInfos :: IO [BoardInfo]
-getBoardInfos = DB.withConnection postsDb $ \c -> do
+getBoardInfos = DB.withConnection postsDb $ \c ->
     DB.query_ c "SELECT Name, Title, Subtitle From Boards"
+
+createAccount :: Text -> PasswordHash Bcrypt -> IO Bool
+createAccount u h = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Accounts (Username, Password) \
+                        \VALUES (:name, :hash)" 
+                        [ ":name"   := u
+                        , ":hash"   := unPasswordHash h]
+    return True
+        
+getPasswordHash :: Text -> IO (Maybe (PasswordHash Bcrypt))
+getPasswordHash user =  DB.withConnection postsDb $ \c -> do
+    q <- DB.queryNamed c    "SELECT Password From Accounts WHERE USERNAME = :user"
+                            [":user" := user] :: IO [DB.Only Text]
+    return $ PasswordHash <$> DB.fromOnly <$> listToMaybe q
+
+insertSessionToken :: Text -> Text -> IO ()
+insertSessionToken a t = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Sessions (Username, Key) \
+                        \VALUES (:name, :token)" 
+                        [ ":name"   := a
+                        , ":token"  := t]
+
+checkSession :: Text -> IO Bool
+checkSession t = DB.withConnection postsDb $ \c -> do
+    q <- DB.queryNamed c   "SELECT 1 FROM Sessions WHERE Key = :token"
+                            [":token" := t]  :: IO [DB.Only Bool]
+    return $ any DB.fromOnly q

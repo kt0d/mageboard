@@ -48,7 +48,7 @@ navBar bs = H.div ! A.id "topbar" $
         H.ul ! A.id "navigation" $ do
             H.li $ H.a ! A.href "/" $ "home"
             H.li $ H.a ! A.href "/recent" $ "recent"
-        
+            H.li $ H.a ! A.href "/mod" $ "mod"
         H.ul ! A.id "board-navigation" $
             flip foldMap bs $ \b -> H.li $ H.a ! A.href ("/" <> H.toValue b) $ H.text b
 

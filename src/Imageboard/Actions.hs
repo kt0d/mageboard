@@ -8,7 +8,7 @@ import Control.Monad.Except
 import Data.Maybe
 import Data.Foldable (fold)
 import Data.Text (Text)
-import qualified Data.Text.Lazy as Lazy (Text, pack, empty, fromStrict)
+import qualified Data.Text.Lazy as Lazy
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
 import qualified Network.Wai.Parse as N (FileInfo(..))
@@ -123,3 +123,4 @@ createThread b = do
         Right _ -> do
             S.status created201
             S.redirect $ "/" <> Lazy.fromStrict b
+

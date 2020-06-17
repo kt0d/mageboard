@@ -10,6 +10,7 @@ import Network.HTTP.Types.Status (notFound404)
 import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNames,getBoardInfos)
 import Imageboard.Pages (catalogView, threadView, errorView, recentView, homePage)
 import Imageboard.Actions
+import Imageboard.Auth
 
 
 main :: IO ()
@@ -25,6 +26,10 @@ main = do
             bs <- liftIO $ getBoardNames
             ps <- liftIO $ getPosts 100
             blaze $ recentView bs ps
+        S.get "/mod" $ do
+            modPage
+        S.post "/login" $ do
+            tryLogin
         S.get "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS Posts (
     FileId          INTEGER,
 
     PRIMARY KEY (Board,Number),
+    FOREIGN KEY (Board) REFERENCES Boards (Name) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Board,Parent) REFERENCES Posts (Board,Number) ON DELETE CASCADE,
     FOREIGN KEY (FileId) REFERENCES Files (Id) ON DELETE SET NULL
 );
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS ThreadInfo (
     ReplyCount      INTEGER     NOT NULL    DEFAULT 0           CHECK(ReplyCount >= 0),
 
     PRIMARY KEY (Board,Number),
+    FOREIGN KEY (Board) REFERENCES Boards (Name) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Board,Number) REFERENCES Posts (Board,Number) ON DELETE CASCADE
 );
 
@@ -54,11 +56,25 @@ CREATE TABLE IF NOT EXISTS Files (
     Height          INTEGER                 DEFAULT NULL,
     
     PRIMARY KEY (Id),
-    CHECK((Width IS NULL) == (Height IS NULL))
+    CHECK((Width IS NULL) = (Height IS NULL))
 );
 
--- CREATE TABLE GlobalConfig AS VALUES
--- ()
+CREATE TABLE IF NOT EXISTS Accounts (
+    Username        TEXT        NOT NULL,
+    Password        TEXT        NOT NULL,
+    Role            TEXT        NOT NULL                        CHECK(Role IN ('admin','moderator')),
+    CreationDate    INTEGER     NOT NULL    DEFAULT 0,
+    PRIMARY KEY (Username)
+);
+
+CREATE TABLE IF NOT EXISTS Sessions (
+    Key             TEXT        NOT NULL,
+    Username        TEXT        NOT NULL,
+    ExpireDate      INTEGER     NOT NULL    DEFAULT 0,
+
+    PRIMARY KEY (Username),
+    FOREIGN KEY (Username) REFERENCES Accounts (Username) ON DELETE CASCADE
+);
 
 --- INDEXES --------------------------------------------------------------------
 
@@ -99,6 +115,22 @@ BEGIN
   UPDATE Boards SET MaxPostNumber = MaxPostNumber + 1 WHERE Name = NEW.Board;
   INSERT INTO ThreadInfo (Number, Board) VALUES ((SELECT MaxPostNumber FROM Boards WHERE Name = NEW.Board), NEW.Board);
 END;
+
+CREATE TRIGGER IF NOT EXISTS delete_old_sessions BEFORE INSERT ON Sessions
+BEGIN
+  DELETE FROM Sessions WHERE Username = NEW.Username;
+END;
+
+CREATE TRIGGER IF NOT EXISTS set_session_expiry AFTER INSERT ON Sessions
+BEGIN
+  UPDATE Sessions SET ExpireDate = strftime('%s','now','+1 hours') WHERE Key = NEW.Key;
+END;
+
+CREATE TRIGGER IF NOT EXISTS set_account_date AFTER INSERT ON Accounts
+BEGIN
+    UPDATE Accounts SET CreationDate = strftime('%s','now') WHERE ROWID = NEW.ROWID;
+END;
+
 
 
 -- CREATE TRIGGER IF NOT EXISTS remove_old_refs BEFORE DELETE ON Posts

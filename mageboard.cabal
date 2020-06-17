@@ -17,6 +17,7 @@ executable mageboard
   main-is:             Main.hs
   other-modules:
     Imageboard.Actions
+    Imageboard.Auth
     Imageboard.Pages
     Imageboard.Pages.Common
     Imageboard.Pages.Thread
@@ -34,10 +35,12 @@ executable mageboard
     mtl,
     text,
     bytestring,
+    base64-bytestring,
     blaze-html,
     sqlite-simple,
     direct-sqlite,
     scotty,
+    scotty-cookie,
     process,
     time,
     wai-extra,
