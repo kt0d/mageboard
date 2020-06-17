@@ -128,9 +128,17 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS set_account_date AFTER INSERT ON Accounts
 BEGIN
-    UPDATE Accounts SET CreationDate = strftime('%s','now') WHERE ROWID = NEW.ROWID;
+  UPDATE Accounts SET CreationDate = strftime('%s','now') WHERE ROWID = NEW.ROWID;
 END;
 
+CREATE TRIGGER IF NOT EXISTS slide_thread BEFORE INSERT ON ThreadInfo
+  WHEN (SELECT COUNT(*) FROM ThreadInfo WHERE Board = NEW.Board)
+       >= (SELECT ThreadLimit FROM Boards WHERE Name = NEW.Board)
+BEGIN
+  DELETE FROM ThreadInfo
+  WHERE Board = NEW.Board AND Sticky = FALSE
+  AND LastBump = (SELECT MIN(LastBump) FROM ThreadInfo WHERE Board = NEW.Board);
+END;
 
 
 -- CREATE TRIGGER IF NOT EXISTS remove_old_refs BEFORE DELETE ON Posts
