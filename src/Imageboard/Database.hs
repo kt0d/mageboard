@@ -159,19 +159,23 @@ insertPostWithFile b p s f = DB.withConnection postsDb $ \c -> do
                         , ":board"      := b]
 
 insertThread :: Board -> PostStub -> IO ()
-insertThread b s = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Board) \
-                        \VALUES (:name, :email, :subject, :text, :board)" 
+insertThread b s = DB.withConnection postsDb $ \c -> DB.withTransaction c $ do
+    DB.execute_ c "PRAGMA foreign_keys = TRUE"
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Board, \
+                        \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
+                        \VALUES (:name, :email, :subject, :text, :board, \
+                        \0, 0, 0, 0, 0, 0)" 
                         [ ":name"       := author s
                         , ":email"      := email s
                         , ":subject"    := subject s
                         , ":text"       := text s
                         , ":board"      := b]
-
 insertThreadWithFile :: Board -> PostStub -> Int -> IO ()
-insertThreadWithFile b s f = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Board) \
-                        \VALUES (:name, :email, :subject, :text, :fileid, :board)" 
+insertThreadWithFile b s f = DB.withConnection postsDb $ \c -> DB.withTransaction c $ do
+    DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Board, \
+                        \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
+                        \VALUES (:name, :email, :subject, :text, :fileid, :board, \
+                        \0, 0, 0, 0, 0, 0)"  
                         [ ":name"       := author s
                         , ":email"      := email s
                         , ":subject"    := subject s

@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS Boards (
     PostMaxNewlines INTEGER     NOT NULL    DEFAULT 64          CHECK(PostMaxNewlines <= 1024),
     PostLimit       INTEGER     NOT NULL    DEFAULT 250,
     ThreadLimit     INTEGER     NOT NULL    DEFAULT 100         CHECK(ThreadLimit BETWEEN 1 AND 1000),
-
     PRIMARY KEY (Name)
 );
 
@@ -26,25 +25,24 @@ CREATE TABLE IF NOT EXISTS Posts (
     Text            TEXT        NOT NULL    DEFAULT ''          CHECK(length(Text)    <= 32768),
     FileId          INTEGER,
 
+    LastBump        INTEGER                 DEFAULT NULL,
+    Sticky          BOOLEAN                 DEFAULT NULL,
+    Lock            BOOLEAN                 DEFAULT NULL,
+    Autosage        BOOLEAN                 DEFAULT NULL,
+    Cycle           BOOLEAN                 DEFAULT NULL,
+    ReplyCount      INTEGER                 DEFAULT NULL        CHECK(ReplyCount IS NULL OR ReplyCount >= 0),
+
     PRIMARY KEY (Board,Number),
     FOREIGN KEY (Board) REFERENCES Boards (Name) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Board,Parent) REFERENCES Posts (Board,Number) ON DELETE CASCADE,
-    FOREIGN KEY (FileId) REFERENCES Files (Id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS ThreadInfo (
-    Board           TEXT        NOT NULL,
-    Number          INTEGER     NOT NULL,
-    LastBump        INTEGER     NOT NULL    DEFAULT 0,
-    Sticky          BOOLEAN     NOT NULL    DEFAULT FALSE,
-    Lock            BOOLEAN     NOT NULL    DEFAULT FALSE,
-    Autosage        BOOLEAN     NOT NULL    DEFAULT FALSE,
-    Cycle           BOOLEAN     NOT NULL    DEFAULT FALSE,
-    ReplyCount      INTEGER     NOT NULL    DEFAULT 0           CHECK(ReplyCount >= 0),
-
-    PRIMARY KEY (Board,Number),
-    FOREIGN KEY (Board) REFERENCES Boards (Name) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (Board,Number) REFERENCES Posts (Board,Number) ON DELETE CASCADE
+    FOREIGN KEY (FileId) REFERENCES Files (Id) ON DELETE SET NULL,
+    CHECK(
+        (Parent IS NOT NULL AND LastBump IS NULL AND Sticky IS NULL AND Lock IS NULL 
+        AND Autosage IS NULL AND Cycle IS NULL AND ReplyCount IS NULL) 
+      OR
+        (Parent IS NULL AND LastBump IS NOT NULL AND Sticky IS NOT NULL AND Lock IS NOT NULL 
+        AND Autosage IS NOT NULL AND Cycle IS NOT NULL AND ReplyCount IS NOT NULL) 
+      )
 );
 
 CREATE TABLE IF NOT EXISTS Files (
@@ -88,32 +86,25 @@ BEGIN
     UPDATE Posts SET Date = strftime('%s','now') WHERE ROWID = NEW.ROWID;
 END;
 
-CREATE TRIGGER IF NOT EXISTS set_lastbump AFTER INSERT ON ThreadInfo
+CREATE TRIGGER IF NOT EXISTS set_lastbump AFTER INSERT ON Posts
+  WHEN NEW.Parent IS NULL
 BEGIN
-    UPDATE ThreadInfo SET LastBump = strftime('%s','now') WHERE ROWID = NEW.ROWID;
+    UPDATE Posts SET LastBump = strftime('%s','now') WHERE ROWID = NEW.ROWID;
 END;
+
 
 CREATE TRIGGER IF NOT EXISTS bump_thread AFTER INSERT ON Posts
   WHEN NEW.Parent IS NOT NULL AND NEW.Email NOT LIKE '%sage%'
 BEGIN
-  UPDATE ThreadInfo SET LastBump = STRFTIME('%s', 'now') 
+  UPDATE Posts SET LastBump = STRFTIME('%s', 'now') 
     WHERE Number = NEW.Parent AND Board = NEW.Board AND Autosage = FALSE;
 END;
 
 CREATE TRIGGER IF NOT EXISTS increment_post_number AFTER INSERT ON Posts
-  WHEN NEW.PARENT IS NOT NULL
 BEGIN
   UPDATE Posts SET Number = (SELECT MaxPostNumber + 1 FROM Boards WHERE Name = NEW.Board) WHERE ROWID = NEW.ROWID;
   UPDATE Boards SET MaxPostNumber = MaxPostNumber + 1 WHERE Name = NEW.Board;
-  UPDATE ThreadInfo SET ReplyCount = ReplyCount + 1 WHERE NEW.Parent = ThreadInfo.Number AND NEW.Board = ThreadInfo.Board;
-END;
-
-CREATE TRIGGER IF NOT EXISTS add_threadinfo AFTER INSERT ON Posts
-  WHEN NEW.Parent IS NULL
-BEGIN
-  UPDATE Posts SET Number = (SELECT MaxPostNumber + 1 FROM Boards WHERE Name = NEW.Board) WHERE ROWID = NEW.ROWID;
-  UPDATE Boards SET MaxPostNumber = MaxPostNumber + 1 WHERE Name = NEW.Board;
-  INSERT INTO ThreadInfo (Number, Board) VALUES ((SELECT MaxPostNumber FROM Boards WHERE Name = NEW.Board), NEW.Board);
+  UPDATE Posts SET ReplyCount = ReplyCount + 1 WHERE NEW.Parent = Posts.Number AND NEW.Board = Posts.Board;
 END;
 
 CREATE TRIGGER IF NOT EXISTS delete_old_sessions BEFORE INSERT ON Sessions
@@ -131,24 +122,22 @@ BEGIN
   UPDATE Accounts SET CreationDate = strftime('%s','now') WHERE ROWID = NEW.ROWID;
 END;
 
-CREATE TRIGGER IF NOT EXISTS slide_thread BEFORE INSERT ON ThreadInfo
-  WHEN (SELECT COUNT(*) FROM ThreadInfo WHERE Board = NEW.Board)
+CREATE TRIGGER IF NOT EXISTS slide_thread BEFORE INSERT ON Posts
+  WHEN (SELECT COUNT(*) FROM Posts WHERE Board = NEW.Board AND Parent IS NULL)
        >= (SELECT ThreadLimit FROM Boards WHERE Name = NEW.Board)
+   AND NEW.Parent IS NULL
 BEGIN
-  DELETE FROM ThreadInfo
-  WHERE Board = NEW.Board AND Sticky = FALSE
-  AND LastBump = (SELECT MIN(LastBump) FROM ThreadInfo WHERE Board = NEW.Board);
+  DELETE FROM Posts
+  WHERE Board = NEW.Board AND Parent IS NULL AND Sticky = FALSE
+        AND LastBump = (SELECT MIN(LastBump) FROM Posts WHERE Board = NEW.Board AND Parent IS NULL);
+END;
+
+CREATE TRIGGER IF NOT EXISTS delete_child_posts BEFORE DELETE ON Posts WHEN OLD.Parent IS NULL
+BEGIN
+  DELETE FROM Posts WHERE Board = OLD.Board AND Parent = OLD.Number;
 END;
 
 
--- CREATE TRIGGER IF NOT EXISTS remove_old_refs BEFORE DELETE ON Posts
--- BEGIN
---   DELETE FROM FileRefs WHERE Number = OLD.Number;
--- END;
-
--- CREATE TRIGGER IF NOT EXISTS remove_file_refs BEFORE DELETE ON Files
--- BEGIN
---   DELETE FROM FileRefs WHERE File = OLD.Name;
 -- END;
 
 --- VIEWS ----------------------------------------------------------------------
@@ -159,9 +148,7 @@ CREATE VIEW IF NOT EXISTS posts_and_files
     Posts.Board,
     Posts.Number,
     Posts.Parent,
-
     Posts.Date,
-
     Posts.Name,
     Posts.Email,
     Posts.Subject,
@@ -177,14 +164,25 @@ CREATE VIEW IF NOT EXISTS posts_and_files
 CREATE VIEW IF NOT EXISTS threads
   AS
   SELECT
-    posts_and_files.*,
+    Posts.Board,
+    Posts.Number,
+    Posts.Parent,
+    Posts.Date,
+    Posts.Name,
+    Posts.Email,
+    Posts.Subject,
+    Posts.Text,
+    
+    Files.Name AS Filename,
+    Files.Extension,
+    Files.Size,
+    Files.Width,
+    Files.Height,
 
-    ThreadInfo.LastBump,
-    ThreadInfo.Sticky,
-    ThreadInfo.Lock,
-    ThreadInfo.Autosage,
-    ThreadInfo.Cycle,
-    ThreadInfo.ReplyCount
-  FROM ThreadInfo
-  JOIN posts_and_files ON posts_and_files.Number = ThreadInfo.Number 
-  AND posts_and_files.Board = ThreadInfo.Board;
+    LastBump,
+    Sticky,
+    Lock,
+    Autosage,
+    Cycle,
+    ReplyCount
+  FROM Posts LEFT JOIN Files on Posts.FileId = Files.Id WHERE Parent IS NULL;
