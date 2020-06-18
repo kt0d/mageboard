@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Imageboard.Pages.Account (
     loginView,
-    loggedInPage
+    loggedInPage,
+    changePasswordPage
 ) where
 import Data.Text (Text)
 import Text.Blaze.Html5((!))
@@ -51,6 +52,11 @@ changePasswordPage = commonHtml [] $ do
     H.div ! A.id "postform" $ H.fieldset $ H.form ! A.action "/changepass" ! A.method "post" $ 
         H.table $ H.tbody $ do
         H.tr $ do
-            H.th $ "Old password"
+            H.th $ H.label ! A.for "old-password" $ "Old password"
+            H.td $ H.input ! A.id "old-password" ! A.name "old-password" ! A.type_ "text" ! A.maxlength "320"
         H.tr $ do
-            H.td $ H.input ! A.type_ "submit" ! A.value "Confirm"
+            H.th $ H.label ! A.for "new-password" $ "New password"
+            H.td $ H.input ! A.id "new-password" ! A.name "new-password" ! A.type_ "text" ! A.maxlength "320"
+        H.tr $ do
+            H.th $ H.label ! A.for "change-password" $ "Submit"
+            H.td $ H.input ! A.id "change-password" ! A.type_ "submit" ! A.value "Change password" 

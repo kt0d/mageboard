@@ -8,7 +8,7 @@ import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 
 import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNames,getBoardInfos)
-import Imageboard.Pages (catalogView, threadView, errorView, recentView, homePage)
+import Imageboard.Pages 
 import Imageboard.Actions
 import Imageboard.Auth
 
@@ -19,17 +19,19 @@ main = do
     S.scotty 3000 $ do
         S.middleware Wai.logStdoutDev
         S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
-        S.get "/" $ do
+        S.get   "/" $ do
             bs <- liftIO $ getBoardInfos
             blaze $ homePage bs
-        S.get "/recent" $ do
+        S.get   "/recent" $ do
             bs <- liftIO $ getBoardNames
             ps <- liftIO $ getPosts 100
             blaze $ recentView bs ps
-        S.get "/mod"        $ modPage
-        S.post "/login"     $ tryLogin
-        S.post "/logout"    $ logout
-        S.get "/:board" $ do
+        S.get   "/mod"      $ modPage
+        S.post  "/login"    $ tryLogin
+        S.post  "/logout"   $ logout
+        S.get   "/changepass"    $ allowLoggedIn (blaze changePasswordPage)
+        S.post  "/changepass"    $ allowLoggedIn changePass
+        S.get   "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board
             bs <- liftIO $ getBoardNames
@@ -38,7 +40,7 @@ main = do
                 else do
                     S.status notFound404
                     blaze $ errorView "Board does not exist"
-        S.get "/:board/:number" $ do
+        S.get   "/:board/:number" $ do
             board <- S.param "board"
             num <- S.param "number"
             e <- liftIO $ getThread board num
@@ -48,10 +50,10 @@ main = do
                 Just t -> do
                     S.status notFound404
                     blaze $ threadView bs t
-        S.post "/post/:board" $ do
+        S.post  "/post/:board" $ do
             board <- S.param "board"
             createThread board
-        S.post "/post/:board/:number" $ do
+        S.post  "/post/:board/:number" $ do
             num <- S.param "number"
             board <- S.param "board"
             createPost board num

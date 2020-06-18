@@ -18,7 +18,9 @@ module Imageboard.Database (
     insertSessionToken,
     removeSessionToken,
     getAccountByToken,
-    checkSession
+    checkSession,
+    createAccount,
+    changePassword
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -235,44 +237,51 @@ getBoardInfos :: IO [BoardInfo]
 getBoardInfos = DB.withConnection postsDb $ \c ->
     DB.query_ c "SELECT Name, Title, Subtitle From Boards"
 
-createAccount :: Text -> PasswordHash Bcrypt -> IO Bool
-createAccount u h = DB.withConnection postsDb $ \c -> do
-    DB.executeNamed c   "INSERT INTO Accounts (Username, Password) \
-                        \VALUES (:name, :hash)" 
+createAccount :: Username -> PasswordHash Bcrypt -> Role -> IO ()
+createAccount u h r = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "INSERT INTO Accounts (Username, Password, Role) \
+                        \VALUES (:name, :hash, :role)" 
+                        [ ":name"   := u
+                        , ":hash"   := unPasswordHash h
+                        , ":role"   := fromEnum r]
+
+changePassword :: Username -> PasswordHash Bcrypt -> IO ()
+changePassword u h = DB.withConnection postsDb $ \c -> do
+    DB.executeNamed c   "UPDATE Accounts SET Password = :hash WHERE Username = :name" 
                         [ ":name"   := u
                         , ":hash"   := unPasswordHash h]
-    return True
-        
-getPasswordHash :: Text -> IO (Maybe (PasswordHash Bcrypt))
+ 
+getPasswordHash :: Username -> IO (Maybe (PasswordHash Bcrypt))
 getPasswordHash user =  DB.withConnection postsDb $ \c -> do
     q <- DB.queryNamed c    "SELECT Password From Accounts WHERE USERNAME = :user"
                             [":user" := user] :: IO [DB.Only Text]
     return $ PasswordHash <$> DB.fromOnly <$> listToMaybe q
 
-insertSessionToken :: Text -> Text -> IO ()
+insertSessionToken :: Username -> SessionKey -> IO ()
 insertSessionToken a t = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Sessions (Username, Key) \
                         \VALUES (:name, :token)" 
                         [ ":name"   := a
                         , ":token"  := t]
 
-removeSessionToken :: Text -> IO ()
+removeSessionToken :: SessionKey -> IO ()
 removeSessionToken t = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "DELETE FROM Sessions WHERE Username = \
                         \(SELECT Username FROM Sessions WHERE Key = :token)" 
                         [ ":token"  := t]
 
-checkSession :: Text -> IO Bool
+checkSession :: SessionKey -> IO Bool
 checkSession t = DB.withConnection postsDb $ \c -> do
     q <- DB.queryNamed c    "SELECT EXISTS(SELECT * FROM Sessions WHERE Key = :token \
                             \AND ExpireDate > STRFTIME('%s', 'now'))"
                             [":token" := t]  :: IO [DB.Only Bool]
     return $ any DB.fromOnly q
 
-getAccountByToken :: Text -> IO (Maybe AccountInfo)
+getAccountByToken :: SessionKey -> IO (Maybe AccountInfo)
 getAccountByToken t = DB.withConnection postsDb $ \c -> do
     q <- DB.queryNamed c    "SELECT Accounts.Username, CreationDate, Role \
                             \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
                             \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
                             [":token" := t]
     return $ listToMaybe q
+
