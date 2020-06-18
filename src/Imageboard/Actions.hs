@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Imageboard.Actions (
     createPost,
-    createThread,
-    blaze
+    createThread
 ) where
 import Control.Monad.Except
 import Data.Maybe
@@ -10,29 +9,16 @@ import Data.Foldable (fold)
 import Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy
 import qualified Data.Text as T
-import qualified Data.ByteString.Lazy as B
-import qualified Network.Wai.Parse as N (FileInfo(..))
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (created201, badRequest400)
-import Text.Blaze.Html5 (Html)
-import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Debug.Trace
 import Imageboard.Database
 import Imageboard.Types
 import Imageboard.Pages (errorView)
 import Imageboard.FileUpload
+import Imageboard.Utils
 
--- | Send HTML created with blaze-html combinators. 
-blaze :: Html -> S.ActionM ()
-blaze = S.html . renderHtml  
-  
-maybeParam :: S.Parsable a => Lazy.Text -> S.ActionM (Maybe a)
-maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
-
-maybeFile :: S.ActionM (Maybe FileData)
-maybeFile = listToMaybe <$> filter (not . B.null . N.fileContent) <$> map snd <$> S.files 
-
-tryMkStub :: BoardConstraints -> Bool -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text ->  Either Text PostStub
+tryMkStub :: BoardConstraints -> Bool -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text 
+    -> Either Text PostStub
 tryMkStub Constraints{..} hasFile a e s t
     | isLocked  = Left "Board is locked"
     | postText    #< minLen && not hasFile  = Left "Post text too short"
@@ -52,7 +38,7 @@ tryMkStub Constraints{..} hasFile a e s t
         postSubject = fold s
         postText    = fold t
 
-tryInsertFile :: FileData -> ExceptT Text IO Int
+tryInsertFile :: MonadIO m => FileData -> ExceptT Text m Int
 tryInsertFile fdata = do
     (f, fPath) <- liftEither $ tryMkFile fdata
     exists <- liftIO $ getFileId $ filename f
@@ -62,7 +48,7 @@ tryInsertFile fdata = do
             newF <- saveFile f fdata fPath
             liftIO $ insertFile newF
 
-tryInsertThread :: Board -> PostStub -> Maybe FileData -> ExceptT Text IO ()
+tryInsertThread :: MonadIO m => Board -> PostStub -> Maybe FileData -> ExceptT Text m ()
 tryInsertThread b stub mdata = case mdata of
     Just fdata -> do
         fileId <- tryInsertFile fdata
@@ -70,7 +56,7 @@ tryInsertThread b stub mdata = case mdata of
     Nothing -> 
         liftIO $ insertThread b stub 
 
-tryInsertPost :: Board -> Int -> PostStub -> Maybe FileData -> ExceptT Text IO ()
+tryInsertPost :: MonadIO m => Board -> Int -> PostStub -> Maybe FileData -> ExceptT Text m ()
 tryInsertPost b p stub mdata = case mdata of
     Just fdata -> do
         fileId <- tryInsertFile fdata
@@ -95,7 +81,7 @@ createPost :: Board -> Int -> S.ActionM ()
 createPost b p = do 
     postFile <- maybeFile
     stubErr <- validatePost b $ isJust postFile
-    result <- liftIO $ runExceptT $ do 
+    result <- runExceptT $ do 
         stub <- liftEither $ stubErr
         exists <- liftIO $ checkThread b p
         if exists 
@@ -113,7 +99,7 @@ createThread :: Board -> S.ActionM ()
 createThread b = do
     postFile <- maybeFile
     stubErr <- validatePost b $ isJust postFile
-    result <- liftIO $ runExceptT $ do 
+    result <- runExceptT $ do 
         stub <- liftEither $ stubErr
         tryInsertThread b stub postFile
     case result of

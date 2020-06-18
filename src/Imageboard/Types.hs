@@ -14,7 +14,7 @@ module Imageboard.Types (
     SessionKey
 ) where
 import Data.Text (Text)
-import Data.Time.Clock (UTCTime)
+import Data.Time (UTCTime)
 
 -- | Data type representing supported file formats.
 data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG | PDF | EPUB | SWF 
@@ -60,7 +60,9 @@ instance Enum FileType where
     toEnum      9       = SWF
     toEnum      _       = errorWithoutStackTrace "Enum.FileType: bad argument"
 
+-- | Unique name of a message board.
 type Board = Text
+-- | Random token used for authentication.
 type SessionKey = Text
 type Username = Text
 
@@ -73,12 +75,11 @@ instance Enum Role where
     toEnum      1           = Moderator
     toEnum      _           = errorWithoutStackTrace "Enum.Role: bad argument"
 
-
 data AccountInfo = AccountInfo {
         user :: Username
     ,   accountCreated :: UTCTime
     ,   role :: Role
-}
+} deriving (Show)
 
 data BoardInfo = BoardInfo {
         name :: Board
@@ -87,18 +88,18 @@ data BoardInfo = BoardInfo {
 } deriving (Show)
 
 data BoardConstraints = Constraints {
-        isLocked :: Bool
-    ,   minLen :: Int
-    ,   maxLen :: Int
-    ,   maxNewLines :: Int
-    ,   maxReplies :: Int
-    ,   maxThreads :: Int
+        isLocked :: Bool -- ^ Whether board is closed for new threads.
+    ,   minLen :: Int -- ^ Minimum length for a post.
+    ,   maxLen :: Int -- ^ Maximum length for a post.
+    ,   maxNewLines :: Int -- ^ Maximum number of new lines in a post.
+    ,   maxReplies :: Int -- ^ Maximum number of replies in a thread.
+    ,   maxThreads :: Int -- ^ Maximum number of threads on the board.
 } deriving (Show)
 
 data PostLocation = PostLocation {
-        board :: Board
+        board :: Board -- ^ Name of board post was posted on.
     ,   number :: Int -- ^ Post number, unique on board.
-    ,   parent :: Maybe Int
+    ,   parent :: Maybe Int -- ^ Number of parent post.
 } deriving (Show)
 
 data Post = Post {  
@@ -124,18 +125,19 @@ data File = File {
 
 data ThreadInfo = ThreadInfo {  
         lastBump :: UTCTime
-    ,   sticky :: Bool
-    ,   lock :: Bool
-    ,   autosage :: Bool
-    ,   cycle_ :: Bool
-    ,   replyCount :: Int
+    ,   sticky :: Bool -- ^ Whether thread is sticked to the top of the board.
+    ,   lock :: Bool  -- ^ Whether thread is closed for replies.
+    ,   autosage :: Bool -- ^ Whether thread can be bumped to the top of the board.
+    ,   cycle_ :: Bool -- ^ Whether old replies will be deleted will after limit of max replies is reached.
+    ,   replyCount :: Int -- ^ Number of replies in thread.
 } deriving (Show)
 
 data ThreadHead = ThreadHead { 
-        opPost :: Post
-    ,   opInfo :: ThreadInfo
+        opPost :: Post -- ^ Opening post of a thread.
+    ,   opInfo :: ThreadInfo 
 } deriving (Show)
 
+-- | Thread as a whole.
 data Thread = Thread {
         op :: ThreadHead
     ,   replies :: [Post]

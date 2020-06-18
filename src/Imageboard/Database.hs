@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE OverloadedStrings, TypeOperators #-}
 module Imageboard.Database (
     setupDb,
@@ -77,7 +78,6 @@ instance DB.FromRow Post where
                         <*> (Just <$> (liftM2 Dim 
                             <$> DB.field
                             <*> DB.field)))
-        where mkPost _ = Post -- ignore Parent column
 
 instance DB.FromRow ThreadInfo where
     fromRow = ThreadInfo 
@@ -187,9 +187,9 @@ insertThreadWithFile b s f = DB.withConnection postsDb $ \c -> DB.withTransactio
 
 -- | Obtain ID of previously inserted file.
 getFileId :: Text -> IO (Maybe Int) -- ^ File Id, if given filename exists in database.
-getFileId name = DB.withConnection postsDb $ \c -> do
+getFileId f = DB.withConnection postsDb $ \c -> do
     l <- DB.queryNamed c    "SELECT Id FROM Files WHERE Name = :name" 
-                            [":name" := name] :: IO [DB.Only Int]
+                            [":name" := f] :: IO [DB.Only Int]
     return $ DB.fromOnly <$> listToMaybe l
 
 getPosts :: Int -> IO [Post]
@@ -252,9 +252,9 @@ changePassword u h = DB.withConnection postsDb $ \c -> do
                         , ":hash"   := unPasswordHash h]
  
 getPasswordHash :: Username -> IO (Maybe (PasswordHash Bcrypt))
-getPasswordHash user =  DB.withConnection postsDb $ \c -> do
+getPasswordHash u =  DB.withConnection postsDb $ \c -> do
     q <- DB.queryNamed c    "SELECT Password From Accounts WHERE USERNAME = :user"
-                            [":user" := user] :: IO [DB.Only Text]
+                            [":user" := u] :: IO [DB.Only Text]
     return $ PasswordHash <$> DB.fromOnly <$> listToMaybe q
 
 insertSessionToken :: Username -> SessionKey -> IO ()

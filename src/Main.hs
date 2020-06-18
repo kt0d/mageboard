@@ -11,7 +11,7 @@ import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNa
 import Imageboard.Pages 
 import Imageboard.Actions
 import Imageboard.Auth
-
+import Imageboard.Utils
 
 main :: IO ()
 main = do

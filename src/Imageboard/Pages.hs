@@ -16,7 +16,7 @@ import Imageboard.Pages.Catalog
 import Imageboard.Pages.Thread
 import Imageboard.Pages.Recent
 import Imageboard.Pages.Account
-import Imageboard.Types (Board,BoardInfo(..))
+import Imageboard.Types (BoardInfo(..))
 -- | Create error page with given text as error text.
 errorView :: Text -> H.Html
 errorView msg = commonHtml [] $ do

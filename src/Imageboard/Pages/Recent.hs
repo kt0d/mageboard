@@ -8,10 +8,8 @@ import qualified Data.List as List
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Text.Printf (printf)
-import Data.Time.Format (formatTime, defaultTimeLocale)
+import Data.Time (formatTime, defaultTimeLocale)
 import Imageboard.Types
-import Imageboard.Markup
 import Imageboard.Pages.Common
 import Imageboard.Pages.Thread (postView)
 

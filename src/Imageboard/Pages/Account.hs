@@ -4,7 +4,6 @@ module Imageboard.Pages.Account (
     loggedInPage,
     changePasswordPage
 ) where
-import Data.Text (Text)
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A

@@ -17,6 +17,7 @@ executable mageboard
   main-is:             Main.hs
   other-modules:
     Imageboard.Actions
+    Imageboard.Utils
     Imageboard.Auth
     Imageboard.Pages
     Imageboard.Pages.Common

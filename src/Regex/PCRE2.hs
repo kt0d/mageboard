@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings, ForeignFunctionInterface, CApiFFI, BangPatterns #-}
 {-# OPTIONS_GHC -optc "-DPCRE2_CODE_UNIT_WIDTH=16" #-}
 
--- see https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/regexredux-ghc-3.html
--- and PCRE2 manpages
-
+-- see <https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/regexredux-ghc-3.html>
+-- and PCRE2 manpages, also available at <https://www.pcre.org/current/doc/html/pcre2api.html>
+{-|
+PCRE2 bindings for Data.Text.
+|-}
 module Regex.PCRE2 (
     RegexReplace(..),
     gsub
@@ -28,6 +30,9 @@ data RegexReplace = REReplace {pattern, replacement :: Text}
 regexOptions :: Word32
 regexOptions = c_PCRE2_UTF .|. c_PCRE2_MULTILINE
 
+substituteOptions :: Word32
+substituteOptions = c_PCRE2_NO_UTF_CHECK .|. c_PCRE2_SUBSTITUTE_GLOBAL
+
 foreign import capi "pcre2.h value PCRE2_ERROR_NOMEMORY"
   c_PCRE2_ERROR_NOMEMORY :: CInt
 
@@ -36,6 +41,9 @@ foreign import capi "pcre2.h value PCRE2_ERROR_BADDATA"
 
 foreign import capi "pcre2.h value PCRE2_UTF"
   c_PCRE2_UTF :: Word32
+
+foreign import capi "pcre2.h value PCRE2_NO_UTF_CHECK"
+  c_PCRE2_NO_UTF_CHECK :: Word32
 
 foreign import capi "pcre2.h value PCRE2_MULTILINE"
   c_PCRE2_MULTILINE :: Word32
@@ -92,7 +100,7 @@ substituteInternal (subject', subjectLen) (REReplace p r) =
         regex <- compilePattern p 
         ret <- c_pcre2_substitute regex 
             subject' subjectLen 0 
-            (c_PCRE2_SUBSTITUTE_GLOBAL .|. c_PCRE2_SUBSTITUTE_OVERFLOW_LENGTH) 
+            (substituteOptions .|. c_PCRE2_SUBSTITUTE_OVERFLOW_LENGTH) 
             nullPtr nullPtr 
             replac' replacLen
             nullPtr outLen'
@@ -102,7 +110,7 @@ substituteInternal (subject', subjectLen) (REReplace p r) =
         output' <- mallocArray $ fromIntegral outLen
         subs <- c_pcre2_substitute regex 
             subject' subjectLen 0 
-            c_PCRE2_SUBSTITUTE_GLOBAL 
+            substituteOptions 
             nullPtr nullPtr 
             replac' replacLen
             output' outLen'
