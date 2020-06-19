@@ -66,7 +66,7 @@ type Board = Text
 type SessionKey = Text
 type Username = Text
 
-data Role = Admin | Moderator deriving (Show)
+data Role = Admin | Moderator deriving (Show, Eq)
 instance Enum Role where
     fromEnum    Admin       = 0
     fromEnum    Moderator   = 1

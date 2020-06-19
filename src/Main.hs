@@ -7,10 +7,9 @@ import qualified Network.Wai.Middleware.Static as Wai
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 
-import Imageboard.Database (setupDb, getPosts, getThreads, getThread, getBoardNames,getBoardInfos)
+import Imageboard.Database
 import Imageboard.Pages 
 import Imageboard.Actions
-import Imageboard.Auth
 import Imageboard.Utils
 
 main :: IO ()
@@ -31,6 +30,15 @@ main = do
         S.post  "/logout"   $ logout
         S.get   "/changepass"    $ allowLoggedIn (blaze changePasswordPage)
         S.post  "/changepass"    $ allowLoggedIn changePass
+        S.get   "/boardedit/:board" $ allowAdmin $ do
+            board <- S.param "board"
+            info <- liftIO $ getBoardInfo board
+            cs <- liftIO $ getConstraints board
+            case (info, cs) of
+                (Just i, Just c) -> blaze $ boardModifyPage i c
+        S.post  "/boardedit/:board" $ allowAdmin modifyBoard
+        S.get   "/newboard" $ allowAdmin (blaze createBoardPage)
+        S.post  "/newboard" $ allowAdmin createBoard
         S.get   "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board

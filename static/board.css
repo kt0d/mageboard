@@ -54,6 +54,12 @@ h2 {
     padding-left: 10pt;
 }
 
+form input {
+    border: 1px solid #000;
+    width: 200px;
+    padding: 1px;
+}
+
 /*** Posting forms ***/
 
 div.form-container {
@@ -95,13 +101,22 @@ form th {
     background-color: turquoise;
 }
 
+form {
+    text-align: center;
+}
+
 form label {
     text-align: left;
     display: inline-block;
-    width: 120px;
     vertical-align: top;
     margin-right: 5px;
     padding: 4px;
+    min-width: 120px;
+}
+
+th {
+    min-width: 120px;
+
 }
 
 fieldset>form>label {
@@ -115,16 +130,14 @@ textarea {
     min-width: 200px;
 }
 
-form input {
-    border: 1px solid #000;
+#postform input {
     width: 200px;
-    padding: 1px;
 }
-form input[type="submit"] {
+#postform input[type="submit"] {
     float: right;
 }
 
-form input[type="file"] {
+#postform input[type="file"] {
     width: 100%;
     max-width: 400px;
 }

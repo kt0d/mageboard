@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
-module Imageboard.Auth (
+module Imageboard.Actions.Auth (
     modPage,
     tryLogin,
     logout,
     allowLoggedIn,
+    allowAdmin,
     changePass
 ) where
 import Control.Monad.Except
@@ -18,13 +19,10 @@ import Crypto.Random (getRandomBytes)
 import Imageboard.Pages (errorView, loginView, loggedInPage)
 import Imageboard.Utils
 import Imageboard.Database
-import Imageboard.Types (AccountInfo(..),SessionKey)
+import Imageboard.Types (AccountInfo(..),SessionKey, Role(..))
 
 randomToken :: IO SessionKey
 randomToken = TE.decodeUtf8 <$> Base64.encode <$> getRandomBytes 72
-
-maybetoExcept :: Monad m => b -> Maybe a -> ExceptT b m a
-maybetoExcept e = liftEither . maybe (Left e) Right 
 
 disallow :: Text -> S.ActionM ()
 disallow msg = do
@@ -32,16 +30,25 @@ disallow msg = do
     SC.deleteCookie "session-token"
     blaze $ errorView msg
 
-allowLoggedIn :: S.ActionM () -> S.ActionM ()
-allowLoggedIn action = do
+allowByRole :: (Role -> Bool) -> S.ActionM () -> S.ActionM ()
+allowByRole f action = do
     key <- SC.getCookie "session-token"
-    case key of
-        Nothing -> disallow "Unathorized" 
-        Just k -> do
-            session <- liftIO $ checkSession k
-            if session 
-                then action
-                else disallow "Unathorized" 
+    runExceptT $ do
+        k <- maybetoExcept "Unathorized" key
+        AccountInfo{..} <- maybetoExcept "Your session token is invalid or expired"
+            =<< (liftIO $ getAccountByToken k)
+        if f role 
+            then return ()
+            else throwError "Insufficient permissions"
+    >>= either
+        disallow
+        (const action)
+
+allowLoggedIn :: S.ActionM () -> S.ActionM ()
+allowLoggedIn = allowByRole (const True)
+
+allowAdmin :: S.ActionM () -> S.ActionM ()
+allowAdmin = allowByRole (==Admin)
 
 modPage :: S.ActionM ()
 modPage = do
@@ -51,7 +58,9 @@ modPage = do
         Just k -> do
             account <- liftIO $ getAccountByToken k
             case account of
-                Just a -> blaze $ loggedInPage a
+                Just a -> do
+                    bs <- liftIO $ getBoardInfos
+                    blaze $ loggedInPage a bs
                 Nothing -> do
                     disallow "Your session token is invalid or expired"
 
@@ -73,6 +82,7 @@ tryLogin = do
 logout :: S.ActionM ()
 logout = do
     key <- SC.getCookie "session-token"
+    SC.deleteCookie "session-token"
     case key of 
         Nothing -> S.redirect "/"
         Just k -> do
@@ -98,5 +108,3 @@ changePass = do
     >>= either
         disallow
         (const $ S.text "ok")
-        
-

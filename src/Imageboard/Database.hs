@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE OverloadedStrings, TypeOperators #-}
+{-# LANGUAGE OverloadedStrings, TypeOperators, RecordWildCards #-}
 module Imageboard.Database (
     setupDb,
     insertPost,
@@ -14,14 +14,17 @@ module Imageboard.Database (
     getFileId,
     getConstraints,
     getBoardNames,
+    getBoardInfo,
     getBoardInfos,
     getPasswordHash,
     insertSessionToken,
     removeSessionToken,
     getAccountByToken,
     checkSession,
-    createAccount,
-    changePassword
+    insertAccount,
+    changePassword,
+    updateBoard,
+    insertBoard
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -227,7 +230,7 @@ getConstraints b = DB.withConnection postsDb $ \c -> do
     bc <- DB.queryNamed c   "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
                             \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
                             [":board" := b] :: IO [BoardConstraints]
-    return $  listToMaybe bc
+    return $ listToMaybe bc
 
 getBoardNames :: IO [Board]
 getBoardNames = DB.withConnection postsDb $ \c ->
@@ -237,8 +240,14 @@ getBoardInfos :: IO [BoardInfo]
 getBoardInfos = DB.withConnection postsDb $ \c ->
     DB.query_ c "SELECT Name, Title, Subtitle From Boards"
 
-createAccount :: Username -> PasswordHash Bcrypt -> Role -> IO ()
-createAccount u h r = DB.withConnection postsDb $ \c -> do
+getBoardInfo :: Board -> IO (Maybe BoardInfo)
+getBoardInfo b = DB.withConnection postsDb $ \c -> do
+    bc <- DB.queryNamed c   "SELECT Name, Title, Subtitle FROM Boards WHERE Name = :board"
+                            [":board" := b] :: IO [BoardInfo]
+    return $ listToMaybe bc
+
+insertAccount :: Username -> PasswordHash Bcrypt -> Role -> IO ()
+insertAccount u h r = DB.withConnection postsDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Accounts (Username, Password, Role) \
                         \VALUES (:name, :hash, :role)" 
                         [ ":name"   := u
@@ -285,3 +294,23 @@ getAccountByToken t = DB.withConnection postsDb $ \c -> do
                             [":token" := t]
     return $ listToMaybe q
 
+updateBoard :: Board -- ^ Old board name.
+            -> BoardInfo -> BoardConstraints -> IO ()
+updateBoard b BoardInfo{..} Constraints{..} = DB.withConnection postsDb $ \c -> do
+    DB.execute_ c    "PRAGMA foreign_keys=1"
+    DB.execute c    "UPDATE Boards SET Name = ?, Title = ?, Subtitle = ?, \
+                    \Lock = ?, PostMinLength = ?, PostMaxLength = ?, \
+                    \PostMaxNewlines = ?, PostLimit = ?, ThreadLimit = ? \
+                    \WHERE Name = ?" 
+                    (name, title, subtitle,
+                    isLocked, minLen, maxLen,
+                    maxNewLines, maxReplies, maxThreads, b)
+
+insertBoard :: BoardInfo -> BoardConstraints -> IO ()
+insertBoard BoardInfo{..} Constraints{..} = DB.withConnection postsDb $ \c -> do
+    DB.execute c    "INSERT INTO Boards (Name, Title, Subtitle, \
+                    \Lock, PostMinLength, PostMaxLength, PostMaxNewLines, PostLimit, ThreadLimit) \
+                    \VALUES (?,?,?,?,?,?,?,?,?)"
+                    (name, title, subtitle,
+                    isLocked, minLen, maxLen, maxNewLines, maxReplies, maxThreads)
+    

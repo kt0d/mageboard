@@ -2,47 +2,51 @@
 module Imageboard.Pages.Account (
     loginView,
     loggedInPage,
-    changePasswordPage
+    changePasswordPage,
+    boardModifyPage,
+    createBoardPage
 ) where
-import Text.Blaze.Html5((!))
+import Control.Monad
+import Text.Blaze.Html5((!), (!?))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Time (defaultTimeLocale)
 import Imageboard.Pages.Common
-import Imageboard.Types (AccountInfo(..))
+import Imageboard.Types (AccountInfo(..), BoardInfo(..), BoardConstraints(..), Role(..))
 
 loginView :: H.Html
 loginView = commonHtml [] $ do
-    H.div ! A.id "postform" $ H.fieldset $ H.form ! 
-        A.method "post" ! A.action "/login" $ H.table $ H.tbody $ do
-        H.tr $ do
-            H.th $ H.label ! A.for "username" $ "Username"
-            H.td $ H.input ! A.id "username" ! A.name "username" ! A.type_ "text" ! A.maxlength "64" 
-        H.tr $ do
-            H.th $ H.label ! A.for "Password" $ "Password"
-            H.td $ H.input ! A.id "password" ! A.name "password" ! A.type_ "password" ! A.maxlength "64"
-        H.tr $ do
-            H.td $ H.input ! A.type_ "submit" ! A.value "Log in" 
+    H.div $ H.fieldset $ H.form ! A.method "post" ! A.action "/login" $ do
+        H.table $ H.tbody $ do
+            H.tr $ do
+                H.th $ H.label ! A.for "username" $ "Username"
+                H.td $ H.input ! A.id "username" ! A.name "username" ! A.type_ "text" ! A.maxlength "64" 
+            H.tr $ do
+                H.th $ H.label ! A.for "Password" $ "Password"
+                H.td $ H.input ! A.id "password" ! A.name "password" ! A.type_ "password" ! A.maxlength "64"
+        H.input ! A.type_ "submit" ! A.value "Log in" 
 
-loggedInPage :: AccountInfo -> H.Html
-loggedInPage AccountInfo{..} = commonHtml [] $ do
-    H.div ! A.id "postform" $ H.fieldset $ H.form $ H.table $ H.tbody $ do
-        H.tr $ do
-            H.th $ "Username"
-            H.td $ H.text $ user
-        H.tr $ do
-            H.th $ "Created on"
-            H.td $ H.time ! A.datetime (H.toValue creatDate) $ (H.toHtml creatDate)
-        H.tr $ do
-            H.th $ "Role"
-            H.td $ H.string $ show role
-        H.tr $ do
-            H.td $ H.input ! A.type_ "submit" ! A.formaction "/logout" ! 
+loggedInPage :: AccountInfo -> [BoardInfo] -> H.Html
+loggedInPage AccountInfo{..} bs = commonHtml (map name bs) $ do
+    H.div $ H.fieldset $ H.form $ do
+        H.table $ H.tbody $ do
+            H.tr $ do
+                H.th $ "Username"
+                H.td $ H.text $ user
+            H.tr $ do
+                H.th $ "Created on"
+                H.td $ H.time ! A.datetime (H.toValue creatDate) $ (H.toHtml creatDate)
+            H.tr $ do
+                H.th $ "Role"
+                H.td $ H.string $ show role
+        H.br
+        H.input ! A.type_ "submit" ! A.formaction "/logout" ! 
                 A.formmethod "post" ! A.value "Log out"
-        H.tr $ do
-            H.td $ H.input ! A.type_ "submit" ! A.formaction "/changepass" ! 
+        H.br
+        H.input ! A.type_ "submit" ! A.formaction "/changepass" ! 
                 A.formmethod "get" ! A.value "Change password"
     
+    when (role == Admin) $ boardListing bs
     where  
         creatDate = formatDate defaultTimeLocale accountCreated
 
@@ -52,10 +56,66 @@ changePasswordPage = commonHtml [] $ do
         H.table $ H.tbody $ do
         H.tr $ do
             H.th $ H.label ! A.for "old-password" $ "Old password"
-            H.td $ H.input ! A.id "old-password" ! A.name "old-password" ! A.type_ "text" ! A.maxlength "320"
+            H.td $ H.input ! A.id "old-password" ! A.name "old-password" ! A.type_ "password" ! A.maxlength "320"
         H.tr $ do
             H.th $ H.label ! A.for "new-password" $ "New password"
-            H.td $ H.input ! A.id "new-password" ! A.name "new-password" ! A.type_ "text" ! A.maxlength "320"
+            H.td $ H.input ! A.id "new-password" ! A.name "new-password" ! A.type_ "password" ! A.maxlength "320"
         H.tr $ do
             H.th $ H.label ! A.for "change-password" $ "Submit"
             H.td $ H.input ! A.id "change-password" ! A.type_ "submit" ! A.value "Change password" 
+
+
+boardListing :: [BoardInfo] -> H.Html
+boardListing bs = H.div ! A.class_ "container narrow" $ do
+    H.h2 "Boards" 
+    H.ul $ do
+        flip foldMap bs $ \BoardInfo{..} -> 
+            H.li $ do
+                H.a ! A.href ("/" <> H.toValue name) ! A.title (H.toValue subtitle) $ 
+                    H.text $ name <> " - " <> title
+                H.a ! A.href ("/boardedit/" <> H.toValue name) $ "Modify"
+        H.li $ H.a ! A.href "/newboard" $ "Add new board"
+
+boardEditTable :: BoardInfo -> BoardConstraints -> H.Html
+boardEditTable BoardInfo{..} Constraints{..} = H.table $ H.tbody $ do
+        toTextRow "name" "Name" name
+        toTextRow "title" "Title" title
+        toTextRow "subtitle" "Subtitle" subtitle
+        toNumberRow "minlen" "Minimum post length" 0 minLen
+        toNumberRow "maxlen" "Maximum post length" 0 maxLen
+        toNumberRow "maxnewlines" "Maximum newlines" 0 maxNewLines
+        toNumberRow "maxreplies" "Maximum replies" 0 maxReplies
+        toNumberRow "maxthreads" "Maximum threads" 0 maxThreads
+        H.tr $ do
+            H.th $ H.label ! A.for "locked" $ "Locked"
+            H.td $ H.input ! A.id "locked" ! A.name "locked" ! A.type_ "checkbox" !? (isLocked, A.checked "")
+   where
+        toTextRow tagName label defValue = H.tr $ do
+            H.th $ H.label ! A.for tagName $ label
+            H.td $ H.input ! A.id tagName ! A.name tagName ! 
+                A.type_ "text" ! A.value (H.toValue defValue)
+        toNumberRow :: H.AttributeValue -> H.Html -> Int -> Int -> H.Html
+        toNumberRow tagName label minVal defVal = H.tr $ do
+            H.th $ H.label ! A.for tagName $ label
+            H.td $ H.input ! A.id tagName ! A.name tagName ! 
+                A.type_ "number" ! A.min (H.toValue minVal) ! A.value (H.toValue defVal)
+
+defBoardInfo :: BoardInfo
+defBoardInfo = BoardInfo "" "" ""
+
+defConstraints :: BoardConstraints
+defConstraints = Constraints False 5 250 25 300 100
+
+createBoardPage :: H.Html
+createBoardPage = commonHtml [] $ 
+    H.div $ H.fieldset $ H.form ! 
+        A.method "post" ! A.action "/newboard" $ do
+        boardEditTable defBoardInfo defConstraints
+        H.input ! A.type_ "submit" ! A.value "Create board" 
+
+boardModifyPage :: BoardInfo -> BoardConstraints -> H.Html
+boardModifyPage bi@(BoardInfo{..}) bc = commonHtml [] $ 
+    H.div $ H.fieldset $ H.form ! 
+        A.method "post" ! A.action ("/boardedit/" <> H.toValue name) $ do
+        boardEditTable bi bc
+        H.input ! A.type_ "submit" ! A.value "Modify board" 

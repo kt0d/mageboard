@@ -16,9 +16,11 @@ build-type:          Simple
 executable mageboard
   main-is:             Main.hs
   other-modules:
+    Imageboard.Actions.Admin
+    Imageboard.Actions.Auth
+    Imageboard.Actions.Posting
     Imageboard.Actions
     Imageboard.Utils
-    Imageboard.Auth
     Imageboard.Pages
     Imageboard.Pages.Common
     Imageboard.Pages.Thread
