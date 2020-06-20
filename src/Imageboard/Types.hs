@@ -81,6 +81,7 @@ data AccountInfo = AccountInfo {
     ,   role :: Role
 } deriving (Show)
 
+-- | Information specific to board.
 data BoardInfo = BoardInfo {
         name :: Board
     ,   title :: Text

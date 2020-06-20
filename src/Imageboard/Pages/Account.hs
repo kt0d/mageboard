@@ -14,6 +14,7 @@ import Data.Time (defaultTimeLocale)
 import Imageboard.Pages.Common
 import Imageboard.Types (AccountInfo(..), BoardInfo(..), BoardConstraints(..), Role(..))
 
+-- | A view with form for logging in.
 loginView :: H.Html
 loginView = commonHtml "Log in" [] $ do
     H.div $ H.fieldset $ H.form ! A.method "post" ! A.action "/login" $ do
@@ -26,6 +27,7 @@ loginView = commonHtml "Log in" [] $ do
                 H.td $ H.input ! A.id "password" ! A.name "password" ! A.type_ "password" ! A.maxlength "64"
         H.input ! A.type_ "submit" ! A.value "Log in" 
 
+-- | A view rendering account information and role specific information.
 loggedInPage :: AccountInfo -> [BoardInfo] -> H.Html
 loggedInPage AccountInfo{..} bs = commonHtml "Your account" (map name bs) $ do
     H.div $ H.fieldset $ H.form $ do
@@ -45,11 +47,11 @@ loggedInPage AccountInfo{..} bs = commonHtml "Your account" (map name bs) $ do
         H.br
         H.input ! A.type_ "submit" ! A.formaction "/changepass" ! 
                 A.formmethod "get" ! A.value "Change password"
-    
     when (role == Admin) $ boardListing bs
     where  
         creatDate = formatDate defaultTimeLocale accountCreated
 
+-- | A view with form for changing password.
 changePasswordPage :: H.Html
 changePasswordPage = commonHtml "Change password" [] $ do
     H.div $ H.fieldset $ H.form ! A.action "/changepass" ! A.method "post" $ 
@@ -67,18 +69,19 @@ changePasswordPage = commonHtml "Change password" [] $ do
 
 boardListing :: [BoardInfo] -> H.Html
 boardListing bs = H.fieldset $ H.form $  do
-    H.h2 "Boards" 
     H.table ! A.class_ "listdata" $ do
+        H.caption "Boards"
         H.thead $ H.tr $ do
             H.th "Name"
             H.th "Title"
-        H.tbody $ 
+            H.th mempty
+        H.tbody $ do
             flip foldMap bs $ \BoardInfo{..} -> H.tr $ do
                 H.td $ H.text name
                 H.td $ H.a ! A.href ("/" <> H.toValue name) ! A.title (H.toValue subtitle) $ 
                     H.text title
                 H.td $ H.a ! A.href ("/boardedit/" <> H.toValue name) $ "Modify"
-    H.a ! A.href "/newboard" $ "Add new board"
+            H.tr $ H.td ! A.colspan "3" $ H.a ! A.href "/newboard" $ "Add new board"
 
 boardEditTable :: BoardInfo -> BoardConstraints -> H.Html
 boardEditTable BoardInfo{..} Constraints{..} = H.table $ H.tbody $ do
@@ -110,6 +113,7 @@ defBoardInfo = BoardInfo "" "" ""
 defConstraints :: BoardConstraints
 defConstraints = Constraints False 5 250 25 300 100
 
+-- | A view with form for board creation.
 createBoardPage :: H.Html
 createBoardPage = commonHtml "Create new board" [] $ 
     H.div $ H.fieldset $ H.form ! 
@@ -117,6 +121,7 @@ createBoardPage = commonHtml "Create new board" [] $
         boardEditTable defBoardInfo defConstraints
         H.input ! A.type_ "submit" ! A.value "Create board" 
 
+-- | A view with form for board modification.
 boardModifyPage :: BoardInfo -> BoardConstraints -> H.Html
 boardModifyPage bi@(BoardInfo{..}) bc = commonHtml "Modify existing board" [] $ 
     H.div $ H.fieldset $ H.form ! 

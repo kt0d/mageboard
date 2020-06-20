@@ -20,6 +20,7 @@ import Imageboard.Types (ThreadInfo(..), File(..), isImage, Board)
 formatDate :: TimeLocale -> UTCTime -> String
 formatDate l = formatTime l "%F %T"
 
+-- |
 flagsToText :: ThreadInfo -> Text
 flagsToText ti = 
     if sticky ti    then "(S)" else T.empty <>
@@ -30,6 +31,7 @@ flagsToText ti =
 cssFile :: FilePath
 cssFile = "/board.css"
 
+-- | A space character.
 space :: H.Html 
 space = "\n"
 
@@ -37,7 +39,11 @@ fileThumbLink :: File -> Text
 fileThumbLink f = mconcat ["/media/thumb/"
     , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
 
-commonHtml :: Text -> [Board] -> H.Html -> H.Html
+-- | Render HTML with title and navbar that includes list of boards.
+commonHtml :: Text -- ^ Title
+        -> [Board] -- ^ List of boards
+        -> H.Html -- ^ Inner HTML
+        -> H.Html
 commonHtml t bs c = H.docTypeHtml $ do
     H.head $ do
         H.title $ H.text t
@@ -76,6 +82,7 @@ navBar bs = H.div ! A.id "topbar" $
                         H.li "<pinktext"
                         H.li "```code``` (multiline allowed)"
 
+-- | Add navigation links that bring to top and bottom of the page.
 addTopBottom :: H.Html -> H.Html
 addTopBottom c = do
     H.nav $ do
@@ -88,6 +95,7 @@ addTopBottom c = do
         space
         H.a ! A.href "#postform" $ "[Open form]"
 
+-- | A form for creating threads on given board.
 threadForm :: Board -> H.Html
 threadForm b = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset $ H.form !
     A.action postUrl ! A.method "post" ! A.enctype "multipart/form-data" $ do
@@ -95,7 +103,7 @@ threadForm b = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset 
     where
         postUrl = "/post/" <> H.toValue b 
     
-
+-- | A form for creating replies to thread specified by board and number.
 replyForm :: Board -> Int -> H.Html
 replyForm b n = H.div ! A.class_ "form-container" ! A.id "postform" $ H.fieldset $ H.form !
     A.action postUrl ! A.method "post" ! A.enctype "multipart/form-data" $ do

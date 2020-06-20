@@ -95,6 +95,8 @@ createPost b p = do
             S.status created201
             S.redirect $ "/" <> Lazy.fromStrict b <> "/" <> (Lazy.pack $ show p)
 
+-- | This action will try to insert new thread sent by the user.
+-- In case of failure it will send user appropriate error page.
 createThread :: Board -> S.ActionM ()
 createThread b = do
     postFile <- maybeFile

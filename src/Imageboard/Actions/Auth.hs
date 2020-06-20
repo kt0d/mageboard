@@ -48,12 +48,16 @@ allowByRole f action = do
         disallow
         (const action)
 
+-- | Allow any logged in user to perform an action.
 allowLoggedIn :: S.ActionM () -> S.ActionM ()
 allowLoggedIn = allowByRole (const True)
 
+-- | Allow admin user to perform an action.
 allowAdmin :: S.ActionM () -> S.ActionM ()
 allowAdmin = allowByRole (==Admin)
 
+-- | If user is logged in, render his account page. 
+-- Otherwise render login form.
 modPage :: S.ActionM ()
 modPage = do
     key <- SC.getCookie "session-token"
@@ -68,6 +72,7 @@ modPage = do
                 Nothing -> do
                     disallow "Your session token is invalid or expired"
 
+-- | Try to log in a user with supplied data from login form.
 tryLogin :: S.ActionM ()
 tryLogin = do
     user <- S.param "username"
@@ -83,6 +88,7 @@ tryLogin = do
                 _ -> disallow "Wrong password"
         Nothing -> disallow "Wrong username"
 
+-- | Log out a user.
 logout :: S.ActionM ()
 logout = do
     key <- SC.getCookie "session-token"
@@ -93,6 +99,7 @@ logout = do
             liftIO $ removeSessionToken k
             S.redirect "/"
         
+-- | Try to change password of a user.
 changePass :: S.ActionM ()
 changePass = do
     key <- SC.getCookie "session-token"

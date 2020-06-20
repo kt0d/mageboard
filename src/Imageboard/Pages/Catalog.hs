@@ -42,6 +42,7 @@ catalogThread h = H.div ! A.class_ "catalog-thread" $ do
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
+-- | Render list of all threads on a board.
 catalogView :: [Board] -> Board -> [ThreadHead] -> H.Html
 catalogView bs b ts = commonHtml ("/" <> b <> "/ - catalog") bs $ do
     H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"

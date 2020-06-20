@@ -23,6 +23,7 @@ recentPostView p = do
     postView p
     where link = linkToPost $ loc p
 
+-- | A view for recent posts.
 recentView :: [Board] -> [Post] -> H.Html
 recentView bs ps = commonHtml "Recent posts" bs $ do 
     addTopBottom $ H.div ! A.class_ "content" $
