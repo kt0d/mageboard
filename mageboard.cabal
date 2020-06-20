@@ -19,6 +19,7 @@ executable mageboard
     Imageboard.Actions.Admin
     Imageboard.Actions.Auth
     Imageboard.Actions.Posting
+    Imageboard.Actions.Moderation
     Imageboard.Actions
     Imageboard.Utils
     Imageboard.Pages

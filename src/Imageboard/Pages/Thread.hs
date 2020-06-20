@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Imageboard.Pages.Thread (
     threadView,
     postView
@@ -60,6 +60,7 @@ fileBox f = do
         showThumb = foldMap (showImage thumbLink . thumbnailDim) $ dim f
         showFallback path = showImage path $ Dim 100 100
 
+-- | A view for one post.
 postView :: Post -> H.Html 
 postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post"  $ do
@@ -75,10 +76,20 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             H.span ! A.class_ "post-number" $ do
                 H.a ! A.href ("#" <> postNumber) $ "No."
                 H.a ! A.href "#postform" $ H.toHtml $ number $ loc p
+            space
+            H.span ! A.class_ "mod-links" $ do
+                foldMap 
+                    (\File{..} -> do
+                        let f = H.toValue filename
+                        H.a ! A.title "Delete file" ! A.href ("/delete-file/" <> f) $ "[F]"
+                        H.a ! A.title "Unlink file" ! A.href ("/unlink" <> H.toValue postAddr) $ "[U]")
+                    (file p)
+                H.a ! A.title "Delete post" ! A.href ("/delete" <> H.toValue postAddr) $ "[D]"
         foldMap fileBox (file p)
         H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
+        postAddr = "/" <> (board $ loc p) <> "/" <> (T.pack $ show $ number $ loc p)
         emailTag = H.a ! A.class_ "post-email" ! A.href ("mailto:" <> H.toValue postEmail)
         postNumber = "postid" <> (H.toValue $ number $ loc p)
         postDate = formatDate defaultTimeLocale $ date p
@@ -87,6 +98,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
+-- | A view that renders whole thread.
 threadView :: [Board] -> Thread -> H.Html
 threadView bs (Thread h ps) = commonHtml (threadTitle h) bs $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"

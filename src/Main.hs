@@ -39,6 +39,16 @@ main = do
         S.post  "/boardedit/:board" $ allowAdmin modifyBoard
         S.get   "/newboard" $ allowAdmin (blaze createBoardPage)
         S.post  "/newboard" $ allowAdmin createBoard
+        S.get  "/delete-file/:name" $
+            S.param "name" >>= allowLoggedIn . deleteFile
+        S.get "/unlink/:board/:num" $ do
+            board <- S.param "board"
+            num <- S.param "num"
+            allowLoggedIn $ unlinkPostFile board num
+        S.get "/delete/:board/:num" $ do
+            board <- S.param "board"
+            num <- S.param "num"
+            allowLoggedIn $ deletePost board num
         S.get   "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board
