@@ -17,12 +17,7 @@ import qualified System.Process as P
 import System.Exit (ExitCode(..))
 import Imageboard.Types (File(..), FileType(..), Dimensions(..))
 import Imageboard.Utils
-
-uploadDir :: FilePath
-uploadDir = "static/media/"
-
-thumbnailDir :: FilePath
-thumbnailDir = "static/media/thumb/"
+import qualified Imageboard.Config as Config
 
 hashFile :: ByteString -> H.Digest SHA512
 hashFile = H.hashlazy
@@ -131,21 +126,16 @@ processFile f = case ext f of
     _  -> zz
     where 
         zz = const $ pure f
-        doPdf path = do
-            dims <- getImgDimensions (uploadDir ++ path)
-            mkImgThumbnail (uploadDir ++ path) (thumbnailDir ++ path ++ ".jpg")
+        doFile dimAction mkThumbAction extension path = do
+            dims <- dimAction (Config.uploadDir ++ path)
+            _ <- mkThumbAction (Config.uploadDir ++ path) (Config.thumbnailDir ++ path ++ extension)
             return $ f { dim = Just dims}
-        doImg path = do
-            dims <- getImgDimensions (uploadDir ++ path)
-            mkImgThumbnail (uploadDir ++ path) (thumbnailDir ++ path)
-            return $ f { dim = Just dims}
-        doVid path = do
-            dims <- getVidDimensions (uploadDir ++ path)
-            mkVidThumbnail (uploadDir ++ path) (thumbnailDir ++ path ++ ".jpg")
-            return $ f { dim = Just dims}
+        doPdf = doFile getImgDimensions mkImgThumbnail ".jpg"
+        doImg = doFile getImgDimensions mkImgThumbnail ""
+        doVid = doFile getVidDimensions mkVidThumbnail ".jpg"
 
 -- | Try to save file, recognize its size and dimensions and generate thumbnail for it.
 saveFile :: MonadIO m => File -> FileData -> FilePath -> ExceptT Text m File
 saveFile f fdata path = do
-    liftIO $ B.writeFile (uploadDir ++ path) $ N.fileContent fdata
+    liftIO $ B.writeFile (Config.uploadDir ++ path) $ N.fileContent fdata
     processFile f path

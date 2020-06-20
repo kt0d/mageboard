@@ -5,23 +5,16 @@ hr {
 }
 
 body {
-    background-color: darkgray;
     font-family: sans-serif;
     font-size: 11pt;
     padding-top: 30px;
 }
 
-a, summary {
-    color: darkslategray;
-    text-decoration: none;
-}
-
 ul {
-    list-style-type: katakana;
+    list-style-type: circle;
 }
 
 a:hover, summary:hover {
-    text-decoration: underline slategray;
     cursor: pointer;
 }
 
@@ -35,8 +28,6 @@ div#content {
 
 div.container {
     margin: auto;
-    background-color: paleturquoise;
-    border: 1px solid #000;
     padding: 10px;
 }
 
@@ -45,17 +36,14 @@ div.container.narrow {
 }
 
 h1 {
-    background: turquoise;
     text-align: center;
 }
 
 h2 {
-    background: turquoise;
     padding-left: 10pt;
 }
 
 form input {
-    border: 1px solid #000;
     width: 200px;
     padding: 1px;
 }
@@ -70,7 +58,6 @@ table.listdata, table.listdata th, table.listdata td {
 }
 
 caption {
-    background-color: turquoise;
     border: 1px solid black;
     border-bottom: none;
     font-size: 15pt;
@@ -108,13 +95,7 @@ fieldset>form {
     width: max-content;
     margin-left: auto;
     margin-right: auto;
-    background-color: paleturquoise;
-    border: 1px solid #000;
     padding: 5px;
-}
-
-form th {
-    background-color: turquoise;
 }
 
 form {
@@ -157,9 +138,7 @@ textarea {
 /*** Post style ***/
 
 div.post {
-    background-color: paleturquoise;
     padding: 10px;
-    border: 1px solid black;
     border-radius: 2px;
     display: inline-block;
     margin-bottom: 5px;
@@ -171,12 +150,6 @@ div.post-container {
     padding-top: 30px;
     margin-top: -30px;
 }
-
-div.post-container:target .post {
-    border: 2px dashed darkred;
-    background-color: turquoise;
-}
-
 img.post-file-thumbnail, video.post-video {
     float: left;
     margin-top: 5px;
@@ -188,23 +161,8 @@ div.post>div.post-header {
     font-size: 12pt;
 }
 
-div.post>div.post-header>span.post-subject {
+div.post>div.post-header>span.post-subject, div.post>div.post-header>span.post-name {
     font-weight: bold;
-    color: #016;
-}
-
-a.post-email {
-    color: slategray;
-    text-decoration: none;
-}
-
-a.post-email:hover {
-    text-decoration: underline slategray;
-}
-
-div.post>div.post-header>span.post-name {
-    font-weight: bold;
-    color: #070;
 }
 
 div.post-comment {
@@ -213,7 +171,6 @@ div.post-comment {
 }
 
 div.post-file-info {
-    background-color: #b5e8e8;
     font-size: 12px;
     margin-top: -5px;
 }
@@ -232,9 +189,6 @@ div.catalog-thread {
     height: 250px;
     padding: 10px;
     margin: 5px;
-    border: 1px solid #000;
-    border-radius: 2px;
-    background-color: paleturquoise;
     overflow-y: auto;
     overflow-x: hidden;
     word-wrap: break-word;
@@ -243,11 +197,9 @@ div.catalog-thread {
 
 div.catalog-thread>div.catalog-thread-subject {
     font-weight: bold;
-    color: #016;
 }
 
 div.catalog-thread>div.catalog-thread-latest-post {
-    color: #636363;
     font-size: 8pt;
 }
 
@@ -306,12 +258,9 @@ div#topbar {
 }
 
 div#topbar>nav#topnav {
-    background-color: paleturquoise;
     padding: 2px;
     padding-left: 8px;
-    border-bottom: 1px solid #000;
     height: auto;
-    ;
 }
 
 div#topbar>nav#topnav>ul {
@@ -359,10 +308,7 @@ div.infobox-content {
     position: absolute;
     display: block;
     width: 300px;
-    background-color: turquoise;
     padding: 10px;
-    border: 1px solid black;
-    border-radius: 2px;
     max-width: 1150px;
     word-wrap: break-word;
     resize: both;
@@ -374,10 +320,7 @@ div.infobox-content {
 a.recent-threadlink {
     position: relative;
     display: block;
-    color: darkred;
     font-size: 14pt;
-    ;
-    background-color: gray;
     width: 100%;
 }
 

@@ -46,12 +46,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Password.Bcrypt as P (hashPassword, PasswordHash(..),Bcrypt)
 import Debug.Trace
 import Imageboard.Types
-
-postsDb :: FilePath
-postsDb = "posts.db" 
-
-schemaFile :: FilePath
-schemaFile = "schema.sql"
+import qualified Imageboard.Config as Config
 
 parseDate :: DB.FieldParser UTCTime
 parseDate f = case DB.fieldData f of 
@@ -115,8 +110,8 @@ instance DB.FromRow AccountInfo where
 -- | Create sqlite3 database file using schema file.
 setupDb :: IO ()
 setupDb = do
-    conn <- DirectDB.open $ T.pack postsDb
-    schema <- T.readFile schemaFile
+    conn <- DirectDB.open Config.postsDb
+    schema <- T.readFile Config.schemaFile
     DirectDB.exec conn schema
     -- Insert default admin account.
     hash <- P.hashPassword "password"
@@ -127,13 +122,15 @@ setupDb = do
         , ":hash" := unPasswordHash hash] 
     DirectDB.close conn
 
+runDb :: (DB.Connection -> IO a) -> IO a 
+runDb = DB.withConnection Config.postsDb
+
 foreignKeyPragma :: DB.Connection -> IO ()
 foreignKeyPragma c = DB.execute_ c   "PRAGMA foreign_keys=1"
 
-
 -- | Insert file information into database.
 insertFile :: File -> IO Int -- ^ File Id.
-insertFile f = DB.withConnection postsDb $ \c -> do
+insertFile f = runDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Files (Name, Extension, Size, Width, Height) \
                         \VALUES (:name, :ext, :size, :width, :height)" 
                         [ ":name"   := filename f
@@ -145,7 +142,7 @@ insertFile f = DB.withConnection postsDb $ \c -> do
 
 -- | Insert post with no file attached into database.
 insertPost :: Board -> Int -> PostStub -> IO () 
-insertPost b p s = DB.withConnection postsDb $ \c -> do
+insertPost b p s = runDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Parent, Board) \
                         \VALUES (:name, :email, :subject, :text, :parent, :board)" 
                         [ ":name"       := author s
@@ -158,7 +155,7 @@ insertPost b p s = DB.withConnection postsDb $ \c -> do
 -- | Insert post with file attached, using previously obtained file Id.
 insertPostWithFile :: Board -> Int -> PostStub -> Int -- ^ fileId 
                     -> IO () -- ^ Post Id.
-insertPostWithFile b p s f = DB.withConnection postsDb $ \c -> do
+insertPostWithFile b p s f = runDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Parent, Board) \
                         \VALUES (:name, :email, :subject, :text, :fileid, :parent, :board)" 
                         [ ":name"       := author s
@@ -171,7 +168,7 @@ insertPostWithFile b p s f = DB.withConnection postsDb $ \c -> do
 
 -- | Insert new thread with no file attached.
 insertThread :: Board -> PostStub -> IO ()
-insertThread b s = DB.withConnection postsDb $ \c -> DB.withTransaction c $ do
+insertThread b s = runDb $ \c -> DB.withTransaction c $ do
     DB.execute_ c "PRAGMA foreign_keys = TRUE"
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Board, \
                         \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
@@ -185,7 +182,7 @@ insertThread b s = DB.withConnection postsDb $ \c -> DB.withTransaction c $ do
 
 -- | Insert post with file attached, using previously obtained file Id.
 insertThreadWithFile :: Board -> PostStub -> Int -> IO ()
-insertThreadWithFile b s f = DB.withConnection postsDb $ \c -> DB.withTransaction c $ do
+insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $ do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Board, \
                         \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
                         \VALUES (:name, :email, :subject, :text, :fileid, :board, \
@@ -200,21 +197,21 @@ insertThreadWithFile b s f = DB.withConnection postsDb $ \c -> DB.withTransactio
 -- | Obtain ID of previously inserted file.
 getFileId :: Text -- ^ Filename
     -> IO (Maybe Int) -- ^ File Id, if given filename exists in database.
-getFileId f = DB.withConnection postsDb $ \c -> do
+getFileId f = runDb $ \c -> do
     l <- DB.queryNamed c    "SELECT Id FROM Files WHERE Name = :name" 
                             [":name" := f] :: IO [DB.Only Int]
     return $ DB.fromOnly <$> listToMaybe l
 
 -- | 'getPosts' @n@ returns @n@ most recent posts, from all boards.
 getPosts :: Int -> IO [Post]
-getPosts n = DB.withConnection postsDb $ \c ->
+getPosts n = runDb $ \c ->
     DB.queryNamed c     "SELECT * FROM posts_and_files ORDER BY Date DESC LIMIT :n" 
                         [":n" := n]
 
 -- | Get thread by board name and number.
 getThread :: Board -> Int -- ^ Post number.
          -> IO (Maybe Thread)
-getThread b n = DB.withConnection postsDb $ \c -> do
+getThread b n = runDb $ \c -> do
     h <-  DB.queryNamed c   "SELECT * FROM threads WHERE Number = :number AND Board = :board" 
                             [":number" := n, ":board" := b]
     ps <- DB.queryNamed c   "SELECT * FROM posts_and_files WHERE Parent = :number \
@@ -227,7 +224,7 @@ getThread b n = DB.withConnection postsDb $ \c -> do
 -- | Check if thread with given number exists on given board. 
 checkThread :: Board -> Int  -- ^ Post number
     -> IO Bool
-checkThread b n = DB.withConnection postsDb $ \c -> do
+checkThread b n = runDb $ \c -> do
     h <-  DB.queryNamed c   "SELECT EXISTS\
                             \(SELECT 1 FROM threads WHERE Number = :number AND Board = :board)" 
                             [":number" := n, ":board" := b] :: IO [DB.Only Bool]
@@ -235,7 +232,7 @@ checkThread b n = DB.withConnection postsDb $ \c -> do
 
 -- | Get all threads from given board.
 getThreads :: Board -> IO [ThreadHead]
-getThreads b = DB.withConnection postsDb $ \c -> do
+getThreads b = runDb $ \c -> do
     q <- DB.queryNamed c    "SELECT * FROM threads WHERE Board = :board \
                             \ORDER BY Sticky DESC, LastBump DESC" 
                             [":board" := b]
@@ -243,7 +240,7 @@ getThreads b = DB.withConnection postsDb $ \c -> do
 
 -- | Get constraints of given board, if it exists.
 getConstraints :: Board -> IO (Maybe BoardConstraints)
-getConstraints b = DB.withConnection postsDb $ \c -> do
+getConstraints b = runDb $ \c -> do
     bc <- DB.queryNamed c   "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
                             \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
                             [":board" := b] :: IO [BoardConstraints]
@@ -251,24 +248,24 @@ getConstraints b = DB.withConnection postsDb $ \c -> do
 
 -- | Get names of all existing boards.
 getBoardNames :: IO [Board]
-getBoardNames = DB.withConnection postsDb $ \c ->
+getBoardNames = runDb $ \c ->
     (fmap . fmap) DB.fromOnly $ DB.query_ c "SELECT Name From Boards"
 
 -- | Get more detailed information for all existing boards.
 getBoardInfos :: IO [BoardInfo]
-getBoardInfos = DB.withConnection postsDb $ \c ->
+getBoardInfos = runDb $ \c ->
     DB.query_ c "SELECT Name, Title, Subtitle From Boards"
 
 -- | Get more detailed information for given board.
 getBoardInfo :: Board -> IO (Maybe BoardInfo)
-getBoardInfo b = DB.withConnection postsDb $ \c -> do
+getBoardInfo b = runDb $ \c -> do
     bc <- DB.queryNamed c   "SELECT Name, Title, Subtitle FROM Boards WHERE Name = :board"
                             [":board" := b] :: IO [BoardInfo]
     return $ listToMaybe bc
 
 -- | Insert new account into database.
 insertAccount :: Username -> PasswordHash Bcrypt -> Role -> IO ()
-insertAccount u h r = DB.withConnection postsDb $ \c -> do
+insertAccount u h r = runDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Accounts (Username, Password, Role) \
                         \VALUES (:name, :hash, :role)" 
                         [ ":name"   := u
@@ -277,21 +274,21 @@ insertAccount u h r = DB.withConnection postsDb $ \c -> do
 
 -- | Change password of given user.
 changePassword :: Username -> PasswordHash Bcrypt -> IO ()
-changePassword u h = DB.withConnection postsDb $ \c -> do
+changePassword u h = runDb $ \c -> do
     DB.executeNamed c   "UPDATE Accounts SET Password = :hash WHERE Username = :name" 
                         [ ":name"   := u
                         , ":hash"   := unPasswordHash h]
  
 -- | Get hashed password if given user exists.
 getPasswordHash :: Username -> IO (Maybe (PasswordHash Bcrypt))
-getPasswordHash u =  DB.withConnection postsDb $ \c -> do
+getPasswordHash u =  runDb $ \c -> do
     q <- DB.queryNamed c    "SELECT Password From Accounts WHERE USERNAME = :user"
                             [":user" := u] :: IO [DB.Only Text]
     return $ PasswordHash <$> DB.fromOnly <$> listToMaybe q
 
 -- | Insert new sesion token for given user. Will delete old session tokens for the user.
 insertSessionToken :: Username -> SessionKey -> IO ()
-insertSessionToken a t = DB.withConnection postsDb $ \c -> do
+insertSessionToken a t = runDb $ \c -> do
     DB.executeNamed c   "INSERT INTO Sessions (Username, Key) \
                         \VALUES (:name, :token)" 
                         [ ":name"   := a
@@ -299,14 +296,14 @@ insertSessionToken a t = DB.withConnection postsDb $ \c -> do
 
 -- | Remove given session token from database.
 removeSessionToken :: SessionKey -> IO ()
-removeSessionToken t = DB.withConnection postsDb $ \c -> do
+removeSessionToken t = runDb $ \c -> do
     DB.executeNamed c   "DELETE FROM Sessions WHERE Username = \
                         \(SELECT Username FROM Sessions WHERE Key = :token)" 
                         [ ":token"  := t]
 
 -- | Check if session token is still valid.
 checkSession :: SessionKey -> IO Bool
-checkSession t = DB.withConnection postsDb $ \c -> do
+checkSession t = runDb $ \c -> do
     q <- DB.queryNamed c    "SELECT EXISTS(SELECT * FROM Sessions WHERE Key = :token \
                             \AND ExpireDate > STRFTIME('%s', 'now'))"
                             [":token" := t]  :: IO [DB.Only Bool]
@@ -314,7 +311,7 @@ checkSession t = DB.withConnection postsDb $ \c -> do
 
 -- | Get account associated with given session token, if it exists.
 getAccountByToken :: SessionKey -> IO (Maybe AccountInfo)
-getAccountByToken t = DB.withConnection postsDb $ \c -> do
+getAccountByToken t = runDb $ \c -> do
     q <- DB.queryNamed c    "SELECT Accounts.Username, CreationDate, Role \
                             \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
                             \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
@@ -324,7 +321,7 @@ getAccountByToken t = DB.withConnection postsDb $ \c -> do
 -- | 
 updateBoard :: Board -- ^ Old board name.
             -> BoardInfo -> BoardConstraints -> IO ()
-updateBoard b BoardInfo{..} Constraints{..} = DB.withConnection postsDb $ \c -> do
+updateBoard b BoardInfo{..} Constraints{..} = runDb $ \c -> do
     foreignKeyPragma c
     DB.execute c    "UPDATE Boards SET Name = ?, Title = ?, Subtitle = ?, \
                     \Lock = ?, PostMinLength = ?, PostMaxLength = ?, \
@@ -336,7 +333,7 @@ updateBoard b BoardInfo{..} Constraints{..} = DB.withConnection postsDb $ \c -> 
 
 -- | Insert new board into a database.
 insertBoard :: BoardInfo -> BoardConstraints -> IO ()
-insertBoard BoardInfo{..} Constraints{..} = DB.withConnection postsDb $ \c -> do
+insertBoard BoardInfo{..} Constraints{..} = runDb $ \c -> do
     DB.execute c    "INSERT INTO Boards (Name, Title, Subtitle, \
                     \Lock, PostMinLength, PostMaxLength, PostMaxNewLines, PostLimit, ThreadLimit) \
                     \VALUES (?,?,?,?,?,?,?,?,?)"
@@ -345,14 +342,14 @@ insertBoard BoardInfo{..} Constraints{..} = DB.withConnection postsDb $ \c -> do
     
 -- | Remove file with given filename from database.
 removeFile :: Text -> IO ()
-removeFile f = DB.withConnection postsDb $ \c -> do
+removeFile f = runDb $ \c -> do
     foreignKeyPragma c
     DB.executeNamed c   "DELETE FROM Files WHERE Name = :name" 
                         [ ":name"  := f]
 
 -- | Remove posts with given number from given board.
 removePost :: Board -> Int -> IO ()
-removePost b n = DB.withConnection postsDb $ \c -> do
+removePost b n = runDb $ \c -> do
     foreignKeyPragma c
     DB.executeNamed c   "DELETE FROM Posts WHERE Board = :board AND Number = :num" 
                         [ ":board"  := b, ":num" := n]
@@ -361,6 +358,6 @@ removePost b n = DB.withConnection postsDb $ \c -> do
 -- a.k.a. turn it into post with no file attached, without removing
 -- file from database.
 unlinkFile :: Board -> Int -> IO ()
-unlinkFile b n = DB.withConnection postsDb $ \c -> do
+unlinkFile b n = runDb $ \c -> do
     DB.executeNamed c   "UPDATE Posts SET FileId = NULL WHERE Board = :board AND Number = :num" 
                         [ ":board"  := b, ":num" := n]

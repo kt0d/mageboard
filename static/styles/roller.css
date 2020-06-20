@@ -1,0 +1,109 @@
+/*** General rules ***/
+
+body {
+    background-color: darkgray;
+}
+
+a, summary {
+    color: darkslategray;
+    text-decoration: none;
+}
+
+a:hover, summary:hover {
+    text-decoration: underline slategray;
+}
+
+div.container {
+    background-color: paleturquoise;
+    border: 1px solid #000;
+}
+
+h1, h2 {
+    background: turquoise;
+}
+
+form input {
+    border: 1px solid #000;
+}
+
+caption {
+    background-color: turquoise;
+}
+
+/** POSTING *********************************/
+
+fieldset>form {
+    background-color: paleturquoise;
+    border: 1px solid #000;
+}
+
+form th {
+    background-color: turquoise;
+}
+
+/**** POST STYLE *(**/
+div.post {
+    background-color: paleturquoise;
+    border: 1px solid black;
+}
+
+div.post-container:target .post {
+    border: 2px dashed darkred;
+    background-color: turquoise;
+}
+
+
+div.post>div.post-header>span.post-subject {
+    color: #016;
+}
+a.post-email {
+    color: slategray;
+    text-decoration: none;
+}
+
+a.post-email:hover {
+    text-decoration: underline slategray;
+}
+
+div.post>div.post-header>span.post-name {
+    color: #070;
+}
+div.post-file-info {
+    background-color: #b5e8e8;
+}
+
+/*** Catalog ***/
+
+div.catalog-thread {
+    border: 1px solid #000;
+    border-radius: 2px;
+    background-color: paleturquoise;
+}
+
+div.catalog-thread>div.catalog-thread-subject {
+    color: #016;
+}
+
+div.catalog-thread>div.catalog-thread-latest-post {
+    color: #636363;
+    font-size: 8pt;
+}
+
+/** navbar *(*/
+div#topbar>nav#topnav {
+    background-color: paleturquoise;
+    border-bottom: 1px solid #000;
+}
+
+/** infobox **/
+div.infobox-content {
+    background-color: turquoise;
+    border: 1px solid black;
+    border-radius: 2px;
+}
+
+/** Recent page **/
+a.recent-threadlink {
+    color: darkred;
+    background-color: gray;
+}

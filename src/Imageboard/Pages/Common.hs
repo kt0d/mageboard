@@ -16,20 +16,19 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Time (formatTime, UTCTime, TimeLocale)
 import Imageboard.Types (ThreadInfo(..), File(..), isImage, Board)
+import qualified Imageboard.Config as Config
 
+-- | Format date to YYYY-MM-DD HH:MM:SS.
 formatDate :: TimeLocale -> UTCTime -> String
 formatDate l = formatTime l "%F %T"
 
--- |
+-- | Render flags that apply to a thread.
 flagsToText :: ThreadInfo -> Text
 flagsToText ti = 
     if sticky ti    then "(S)" else T.empty <>
     if lock ti      then "(L)" else T.empty <>
     if autosage ti  then "(A)" else T.empty <>
     if cycle_ ti    then "(C)" else T.empty
-
-cssFile :: FilePath
-cssFile = "/board.css"
 
 -- | A space character.
 space :: H.Html 
@@ -44,10 +43,17 @@ commonHtml :: Text -- ^ Title
         -> [Board] -- ^ List of boards
         -> H.Html -- ^ Inner HTML
         -> H.Html
-commonHtml t bs c = H.docTypeHtml $ do
+commonHtml pageTitle bs c = H.docTypeHtml $ do
     H.head $ do
-        H.title $ H.text t
-        H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
+        H.title $ H.text pageTitle
+        let stylesheet = H.link ! A.type_ "text/css"
+        stylesheet ! A.rel "stylesheet" ! A.href Config.cssFile
+        foldMap 
+            (\(l,t) -> stylesheet ! A.rel  "stylesheet" ! A.href l ! A.title t) 
+            (take 1 Config.cssStyles)
+        foldMap 
+            (\(l,t) -> stylesheet ! A.rel "alternate stylesheet" ! A.href l ! A.title t) 
+            (drop 1 Config.cssStyles)
     H.body $ do
         H.a ! A.id "top-of-page" $ mempty
         navBar bs

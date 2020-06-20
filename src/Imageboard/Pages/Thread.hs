@@ -31,17 +31,17 @@ sizeFormat = T.pack . toFormat
             where x = fromIntegral n :: Double
 
 fileBox :: File -> H.Html
-fileBox f = do
+fileBox f@(File{..}) = do
     H.div ! A.class_ "post-file-info" $ do
         H.a ! A.type_ "blank" ! A.href link $ H.text "File"
         space
-        H.toHtml $ show $ ext f
+        H.toHtml $ show ext
         space
         H.toHtml ("(" :: Text)
         H.a ! H.customAttribute "download" "" ! A.href link $ H.text "dl"
-        H.toHtml $ ") " `T.append` (sizeFormat $ size f)
-        foldMap dimFormat $ dim f
-    case ext f of
+        H.toHtml $ ") " `T.append` (sizeFormat size)
+        foldMap dimFormat dim
+    case ext of
         e | isAudio e -> showAudio
         EPUB -> showFallback "epub.png"
         SWF -> showFallback "swf.png"
@@ -49,20 +49,20 @@ fileBox f = do
     where
         dimFormat :: Dimensions -> H.Html
         dimFormat (Dim x y) = space >> (H.string $ printf "%dx%d" x y)
-        link = "/media/" <> (H.toValue $ filename f)
+        link =  "/media/" <> (H.toValue filename)
         thumbLink = H.toValue $ fileThumbLink f
         showAudio = H.audio ! A.preload "none" ! A.loop "" ! A.controls "" $
-            H.source ! A.type_ (if ext f == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
+            H.source ! A.type_ (if ext == OGG then "audio/ogg" else "audio/mpeg") ! A.src link
         showImage :: H.AttributeValue -> Dimensions -> H.Html
         showImage path (Dim w h) = H.a ! A.type_ "blank" ! A.href link $ 
             H.img ! A.class_ "post-file-thumbnail" ! 
             A.width (H.toValue w) ! A.height (H.toValue h) ! A.src path
-        showThumb = foldMap (showImage thumbLink . thumbnailDim) $ dim f
+        showThumb = foldMap (showImage thumbLink . thumbnailDim) dim
         showFallback path = showImage path $ Dim 100 100
 
 -- | A view for one post.
 postView :: Post -> H.Html 
-postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
+postView Post{..} = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post"  $ do
         H.div ! A.class_ "post-header" $ do
             H.span ! A.class_ "post-subject" $ H.toHtml $ postSubject
@@ -75,7 +75,7 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
             space
             H.span ! A.class_ "post-number" $ do
                 H.a ! A.href ("#" <> postNumber) $ "No."
-                H.a ! A.href "#postform" $ H.toHtml $ number $ loc p
+                H.a ! A.href "#postform" $ H.toHtml $ number loc
             space
             H.span ! A.class_ "mod-links" $ do
                 foldMap 
@@ -83,20 +83,20 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
                         let f = H.toValue filename
                         H.a ! A.title "Delete file" ! A.href ("/delete-file/" <> f) $ "[F]"
                         H.a ! A.title "Unlink file" ! A.href ("/unlink" <> H.toValue postAddr) $ "[U]")
-                    (file p)
+                    file
                 H.a ! A.title "Delete post" ! A.href ("/delete" <> H.toValue postAddr) $ "[D]"
-        foldMap fileBox (file p)
+        foldMap fileBox file
         H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
-        postAddr = "/" <> (board $ loc p) <> "/" <> (T.pack $ show $ number $ loc p)
+        postAddr = "/" <> (board loc) <> "/" <> (T.pack $ show $ number loc)
         emailTag = H.a ! A.class_ "post-email" ! A.href ("mailto:" <> H.toValue postEmail)
-        postNumber = "postid" <> (H.toValue $ number $ loc p)
-        postDate = formatDate defaultTimeLocale $ date p
-        postAuthor = author $ content p
-        postEmail = email $ content p
-        postSubject = subject $ content p
-        postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
+        postNumber = "postid" <> (H.toValue $ number loc)
+        postDate = formatDate defaultTimeLocale date
+        postAuthor = author content
+        postEmail = email content
+        postSubject = subject content
+        postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text content
 
 -- | A view that renders whole thread.
 threadView :: [Board] -> Thread -> H.Html
