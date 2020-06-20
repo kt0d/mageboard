@@ -24,6 +24,6 @@ recentPostView p = do
     where link = linkToPost $ loc p
 
 recentView :: [Board] -> [Post] -> H.Html
-recentView bs ps = commonHtml bs $ do 
+recentView bs ps = commonHtml "Recent posts" bs $ do 
     addTopBottom $ H.div ! A.class_ "content" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ map recentPostView ps

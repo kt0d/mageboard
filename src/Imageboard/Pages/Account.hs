@@ -15,7 +15,7 @@ import Imageboard.Pages.Common
 import Imageboard.Types (AccountInfo(..), BoardInfo(..), BoardConstraints(..), Role(..))
 
 loginView :: H.Html
-loginView = commonHtml [] $ do
+loginView = commonHtml "Log in" [] $ do
     H.div $ H.fieldset $ H.form ! A.method "post" ! A.action "/login" $ do
         H.table $ H.tbody $ do
             H.tr $ do
@@ -27,9 +27,9 @@ loginView = commonHtml [] $ do
         H.input ! A.type_ "submit" ! A.value "Log in" 
 
 loggedInPage :: AccountInfo -> [BoardInfo] -> H.Html
-loggedInPage AccountInfo{..} bs = commonHtml (map name bs) $ do
+loggedInPage AccountInfo{..} bs = commonHtml "Your account" (map name bs) $ do
     H.div $ H.fieldset $ H.form $ do
-        H.table $ H.tbody $ do
+        H.table ! A.class_ "listdata" $ H.tbody $ do
             H.tr $ do
                 H.th $ "Username"
                 H.td $ H.text $ user
@@ -51,8 +51,8 @@ loggedInPage AccountInfo{..} bs = commonHtml (map name bs) $ do
         creatDate = formatDate defaultTimeLocale accountCreated
 
 changePasswordPage :: H.Html
-changePasswordPage = commonHtml [] $ do
-    H.div ! A.id "postform" $ H.fieldset $ H.form ! A.action "/changepass" ! A.method "post" $ 
+changePasswordPage = commonHtml "Change password" [] $ do
+    H.div $ H.fieldset $ H.form ! A.action "/changepass" ! A.method "post" $ 
         H.table $ H.tbody $ do
         H.tr $ do
             H.th $ H.label ! A.for "old-password" $ "Old password"
@@ -66,15 +66,19 @@ changePasswordPage = commonHtml [] $ do
 
 
 boardListing :: [BoardInfo] -> H.Html
-boardListing bs = H.div ! A.class_ "container narrow" $ do
+boardListing bs = H.fieldset $ H.form $  do
     H.h2 "Boards" 
-    H.ul $ do
-        flip foldMap bs $ \BoardInfo{..} -> 
-            H.li $ do
-                H.a ! A.href ("/" <> H.toValue name) ! A.title (H.toValue subtitle) $ 
-                    H.text $ name <> " - " <> title
-                H.a ! A.href ("/boardedit/" <> H.toValue name) $ "Modify"
-        H.li $ H.a ! A.href "/newboard" $ "Add new board"
+    H.table ! A.class_ "listdata" $ do
+        H.thead $ H.tr $ do
+            H.th "Name"
+            H.th "Title"
+        H.tbody $ 
+            flip foldMap bs $ \BoardInfo{..} -> H.tr $ do
+                H.td $ H.text name
+                H.td $ H.a ! A.href ("/" <> H.toValue name) ! A.title (H.toValue subtitle) $ 
+                    H.text title
+                H.td $ H.a ! A.href ("/boardedit/" <> H.toValue name) $ "Modify"
+    H.a ! A.href "/newboard" $ "Add new board"
 
 boardEditTable :: BoardInfo -> BoardConstraints -> H.Html
 boardEditTable BoardInfo{..} Constraints{..} = H.table $ H.tbody $ do
@@ -107,14 +111,14 @@ defConstraints :: BoardConstraints
 defConstraints = Constraints False 5 250 25 300 100
 
 createBoardPage :: H.Html
-createBoardPage = commonHtml [] $ 
+createBoardPage = commonHtml "Create new board" [] $ 
     H.div $ H.fieldset $ H.form ! 
         A.method "post" ! A.action "/newboard" $ do
         boardEditTable defBoardInfo defConstraints
         H.input ! A.type_ "submit" ! A.value "Create board" 
 
 boardModifyPage :: BoardInfo -> BoardConstraints -> H.Html
-boardModifyPage bi@(BoardInfo{..}) bc = commonHtml [] $ 
+boardModifyPage bi@(BoardInfo{..}) bc = commonHtml "Modify existing board" [] $ 
     H.div $ H.fieldset $ H.form ! 
         A.method "post" ! A.action ("/boardedit/" <> H.toValue name) $ do
         boardEditTable bi bc

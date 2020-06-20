@@ -88,10 +88,11 @@ postView p = H.div ! A.class_ "post-container" ! A.id postNumber $ do
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
 
 threadView :: [Board] -> Thread -> H.Html
-threadView bs (Thread h ps) = commonHtml bs $ do 
+threadView bs (Thread h ps) = commonHtml (threadTitle h) bs $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
     H.hr ! A.class_ "invisible"
     case (loc $ opPost h) of 
         (PostLocation b n _) -> replyForm b n
     addTopBottom $ H.div ! A.class_ "content" $
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> (opPost h:ps)
+    where threadTitle (ThreadHead p _) = "/" <> (board $ loc p) <> "/" <> (T.pack $ show $ number $ loc p)

@@ -59,7 +59,13 @@ form input {
     width: 200px;
     padding: 1px;
 }
-
+table.listdata {
+    min-width: 300px;
+}
+table.listdata, table.listdata th, table.listdata td {
+    border: 1px solid black;
+    border-collapse: collapse;
+  }
 /*** Posting forms ***/
 
 div.form-container {
@@ -112,11 +118,6 @@ form label {
     margin-right: 5px;
     padding: 4px;
     min-width: 120px;
-}
-
-th {
-    min-width: 120px;
-
 }
 
 fieldset>form>label {

@@ -19,12 +19,12 @@ import Imageboard.Pages.Account
 import Imageboard.Types (BoardInfo(..))
 -- | Create error page with given text as error text.
 errorView :: Text -> H.Html
-errorView msg = commonHtml [] $ do
+errorView msg = commonHtml "Erorr" [] $ do
     H.div ! A.class_ "content" $
         H.div ! A.class_ "container narrow" $ H.text msg
 
 homePage :: [BoardInfo] -> H.Html
-homePage bs = commonHtml (map name bs) $ do
+homePage bs = commonHtml "Home page" (map name bs) $ do
     H.h1 "Welcome"
     H.div ! A.class_ "container narrow" $ do
         H.h2 "Boards" 

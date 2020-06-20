@@ -115,8 +115,8 @@ setupDb = do
     conn <- DirectDB.open $ T.pack postsDb
     schema <- T.readFile schemaFile
     DirectDB.exec conn schema
-    hash <- P.hashPassword "password"
     -- Insert default admin account.
+    hash <- P.hashPassword "password"
     DB.executeNamed (DB.Connection conn)   
         "INSERT OR IGNORE INTO Accounts (Username, Password, Role) \
         \VALUES (:user, :hash, 0)"

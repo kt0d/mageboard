@@ -21,6 +21,10 @@ import Imageboard.Utils
 import Imageboard.Database
 import Imageboard.Types (AccountInfo(..),SessionKey, Role(..))
 
+
+setSessionCookie :: SessionKey -> S.ActionM ()
+setSessionCookie st = SC.setSimpleCookie "session-token" $ st <> "; SameSite=Strict; Max-Age=3600"
+
 randomToken :: IO SessionKey
 randomToken = TE.decodeUtf8 <$> Base64.encode <$> getRandomBytes 72
 
@@ -74,7 +78,7 @@ tryLogin = do
                 P.PasswordCheckSuccess -> do
                     key <- liftIO $ randomToken
                     liftIO $ insertSessionToken user key
-                    SC.setSimpleCookie "session-token" key
+                    setSessionCookie key
                     S.redirect "/mod"
                 _ -> disallow "Wrong password"
         Nothing -> disallow "Wrong username"

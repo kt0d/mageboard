@@ -37,9 +37,10 @@ fileThumbLink :: File -> Text
 fileThumbLink f = mconcat ["/media/thumb/"
     , if isImage $ ext f then filename f else filename f `T.append` ".jpg"]
 
-commonHtml :: [Board] -> H.Html -> H.Html
-commonHtml bs c = H.docTypeHtml $ do
-    H.head $
+commonHtml :: Text -> [Board] -> H.Html -> H.Html
+commonHtml t bs c = H.docTypeHtml $ do
+    H.head $ do
+        H.title $ H.text t
         H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href (H.preEscapedStringValue cssFile)
     H.body $ do
         H.a ! A.id "top-of-page" $ mempty

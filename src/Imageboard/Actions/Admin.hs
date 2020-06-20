@@ -5,11 +5,11 @@ module Imageboard.Actions.Admin (
 ) where
 import Control.Monad.Except
 import qualified Web.Scotty as S
-import Network.HTTP.Types.Status (unauthorized401)
+import Network.HTTP.Types.Status (created201, badRequest400)
 import Imageboard.Pages (errorView)
 import Imageboard.Utils
 import Imageboard.Database
-import Imageboard.Types (Role(..), BoardInfo(..), BoardConstraints(..))
+import Imageboard.Types (BoardInfo(..), BoardConstraints(..))
 
 loadBoardFormThen :: (BoardInfo -> BoardConstraints -> S.ActionM ()) -> S.ActionM ()
 loadBoardFormThen action = do
@@ -29,17 +29,19 @@ loadBoardFormThen action = do
 
 modifyBoard :: S.ActionM ()
 modifyBoard = do
-    board <- maybeParam "board"
-    maybe 
+    maybeParam "board"
+    >>= maybe 
         (blaze $ errorView "No board to modify")
         (\b -> loadBoardFormThen $ \bi bc -> do
             liftIO $ updateBoard b bi bc
             S.redirect "/mod"
         )
-        board
         
 createBoard :: S.ActionM ()
 createBoard = do
     loadBoardFormThen $ \bi bc -> do
         liftIO $ insertBoard bi bc
+        S.status created201
         S.redirect "/mod"
+
+-- createAccount :: 

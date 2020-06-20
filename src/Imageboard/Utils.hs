@@ -9,6 +9,7 @@ module Imageboard.Utils (
 ) where
 import Control.Monad.Except
 import Data.Maybe
+import Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy
 import qualified Data.ByteString.Lazy as B
 import qualified Network.Wai.Parse as N (FileInfo(..))
@@ -25,6 +26,9 @@ blaze = S.html . renderHtml
   
 maybeParam :: S.Parsable a => Lazy.Text -> S.ActionM (Maybe a)
 maybeParam p = (Just <$> S.param p) `S.rescue` (const $ return Nothing)
+
+tryParam :: S.Parsable a => Lazy.Text -> S.ActionM (Either Text a)
+tryParam p = (Right <$> S.param p) `S.rescue` (return . Left . Lazy.toStrict)
 
 checkBoxParam :: Lazy.Text -> S.ActionM Bool
 checkBoxParam p = ((S.param p :: S.ActionM String) >> return True) `S.rescue` (const $ return False) 
