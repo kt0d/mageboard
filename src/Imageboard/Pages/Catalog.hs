@@ -24,10 +24,11 @@ catalogThread :: ThreadHead -> H.Html
 catalogThread ThreadHead{..} = H.div ! A.class_ "catalog-thread" $ do
     H.div ! A.class_ "catalog-thread-link" $ H.a ! A.href threadLink $
         catalogThumbnail $ file opPost
-    H.div ! A.class_ "thread-info" $ do
+    H.div $ do
         --H.span ! class_ "thread-board-link" $ a ! href "/b" $ "/b/"
         H.span ! A.class_ "thread-info-replies" $ H.toHtml $ "R:" ++ (show $ replyCount opInfo)
-        H.span ! A.class_ "thread-info-flags" $ H.toHtml $ flagsToText $ flags opInfo
+        space
+        H.span ! A.class_ "thread-flags" $ renderFlags $ flags opInfo
     H.div ! A.class_ "catalog-thread-latest-post" $ do
         "L:"
         H.time ! A.datetime (H.toValue threadDate) $ H.toHtml threadDate

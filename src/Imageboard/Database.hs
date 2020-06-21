@@ -2,20 +2,26 @@
 {-# LANGUAGE OverloadedStrings, TypeOperators, RecordWildCards #-}
 module Imageboard.Database (
     setupDb,
+    -- * Post and thread insertion
     insertPost,
     insertFile,
     insertPostWithFile,
     insertThread,
     insertThreadWithFile,
+    -- * Post and thread queries
     getPosts,
     getThread,
     getThreads,
     checkThread,
     getFileId,
+    -- * Board queries and management
     getConstraints,
     getBoardNames,
     getBoardInfo,
     getBoardInfos,
+    updateBoard,
+    insertBoard,
+    -- * Account management
     getPasswordHash,
     insertSessionToken,
     removeSessionToken,
@@ -23,17 +29,19 @@ module Imageboard.Database (
     checkSession,
     insertAccount,
     changePassword,
-    updateBoard,
-    insertBoard,
+    -- * Moderation
     removeFile,
     removePost,
     unlinkFile,
-    updateThread
+    -- * Toggle one of ThreadFlags
+    toggleSticky,
+    toggleLock,
+    toggleAutosage,
+    toggleCycle
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
 import Data.Maybe (listToMaybe)
-import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)), (:.)(..))
@@ -364,8 +372,17 @@ unlinkFile b n = runDb $ \c -> do
     DB.executeNamed c   "UPDATE Posts SET FileId = NULL WHERE Board = :board AND Number = :num" 
                         [ ":board"  := b, ":num" := n]
 
+toggleQuery :: DB.Query -> Board -> Int -> IO ()
+toggleQuery q b n = runDb $ \c -> DB.execute c q (b,n)
 
-updateThread :: Board -> Int -> ThreadInfo -> IO ()
-updateThread b n ThreadInfo{..} = runDb $ \c -> do
-    DB.executeNamed c   "UPDATE Posts WHERE Board = :board AND Number = :num" 
-                        [ ":board"  := b, ":num" := n]
+toggleSticky :: Board -> Int -> IO ()
+toggleSticky = toggleQuery "UPDATE Posts SET Sticky = NOT STICKY WHERE Board = ? AND Number = ?" 
+
+toggleAutosage :: Board -> Int -> IO ()
+toggleAutosage = toggleQuery "UPDATE Posts SET Autosage = NOT Autosage WHERE Board = ? AND Number = ?" 
+
+toggleLock :: Board -> Int -> IO ()
+toggleLock = toggleQuery "UPDATE Posts SET Lock = NOT Lock WHERE Board = ? AND Number = ?" 
+
+toggleCycle :: Board -> Int -> IO ()
+toggleCycle = toggleQuery "UPDATE Posts SET Cycle = NOT Cycle WHERE Board = ? AND Number = ?"

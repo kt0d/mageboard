@@ -10,7 +10,6 @@ import Control.Monad
 import Text.Blaze.Html5((!), (!?))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Data.Time (defaultTimeLocale)
 import Imageboard.Pages.Common
 import Imageboard.Types (AccountInfo(..), BoardInfo(..), BoardConstraints(..), Role(..))
 

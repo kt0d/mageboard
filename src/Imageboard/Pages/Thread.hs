@@ -111,7 +111,7 @@ threadModLinks Post{..} = do
 
 opPostView :: ThreadHead -> H.Html
 opPostView ThreadHead{..} = basePostView opPost $ do
-    H.span ! A.class_ "thread-flags" $ H.text $ flagsToText $ flags opInfo
+    H.span ! A.class_ "thread-flags" $ renderFlags $ flags opInfo
     space
     H.span ! A.class_ "mod-links" $ do
         postModLinks opPost

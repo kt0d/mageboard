@@ -11,11 +11,11 @@ module Imageboard.Config (
 import Data.String (IsString)
 import Data.Time (TimeZone(..))
 
--- Absolute path to main CSS file, with @static@ directory as root.
+-- | Absolute path to main CSS file, with @static@ directory as root.
 cssFile :: IsString a => a
 cssFile = "/styles/global.css"
 
--- List of CSS styles with titles. First style is default.
+-- | List of CSS styles with titles. First style is default.
 cssStyles :: IsString a => [(a,a)]
 cssStyles = [("/styles/roller.css",     "Roller")
             ,("/styles/jungle.css",     "Jungle")]

@@ -49,6 +49,15 @@ main = do
             board <- S.param "board"
             num <- S.param "num"
             allowLoggedIn $ deletePost board num
+        S.get "/sticky/:board/:num" $ do
+            allowLoggedIn $ join $ toggleThreadSticky <$> S.param "board" <*> S.param "num"
+        S.get "/lock/:board/:num" $ do
+            allowLoggedIn $ join $ toggleThreadLock <$> S.param "board" <*> S.param "num"
+        S.get "/autosage/:board/:num" $ do
+            allowLoggedIn $ join $ toggleThreadAutosage <$> S.param "board" <*> S.param "num"
+        S.get "/cycle/:board/:num" $ do
+            allowLoggedIn $ join $ toggleThreadCycle <$> S.param "board" <*> S.param "num"
+
         S.get   "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Imageboard.Pages.Common (
-    flagsToText,
+    renderFlags,
     space,
     commonHtml,
     addTopBottom,
@@ -23,12 +23,12 @@ formatDate :: UTCTime -> String
 formatDate = formatTime defaultTimeLocale "%F %T" . utcToLocalTime Config.timezone
 
 -- | Render flags that apply to a thread.
-flagsToText :: ThreadFlags -> Text
-flagsToText Flags{..} = 
-    if sticky   then "(S)" else T.empty <>
-    if lock     then "(L)" else T.empty <>
-    if autosage then "(A)" else T.empty <>
-    if cycle_   then "(C)" else T.empty
+renderFlags :: ThreadFlags -> H.Html
+renderFlags Flags{..} = mconcat
+    [ if sticky   then H.span ! A.title "Sticky"    ! A.class_ "sticky-icon"   $ "(S)" else mempty
+    , if lock     then H.span ! A.title "Locked"    ! A.class_ "lock-icon"     $ "(L)" else mempty
+    , if autosage then H.span ! A.title "Autosage"  ! A.class_ "autosage-icon" $ "(A)" else mempty
+    , if cycle_   then H.span ! A.title "Cycle"     ! A.class_ "cycle-icon"    $ "(C)" else mempty]
 
 -- | A space character.
 space :: H.Html 
