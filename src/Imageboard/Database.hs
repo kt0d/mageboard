@@ -12,7 +12,7 @@ module Imageboard.Database (
     getPosts,
     getThread,
     getThreads,
-    checkThread,
+    getThreadInfo,
     getFileId,
     -- * Board queries and management
     getConstraints,
@@ -42,6 +42,7 @@ module Imageboard.Database (
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
 import Data.Maybe (listToMaybe)
+import Data.Functor ((<&>))
 import qualified Data.Text.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)), (:.)(..))
@@ -53,7 +54,6 @@ import qualified Database.SQLite3 as DirectDB (open, close, exec)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Password.Bcrypt as P (hashPassword, PasswordHash(..),Bcrypt)
-import Debug.Trace
 import Imageboard.Types
 import qualified Imageboard.Config as Config
 
@@ -232,13 +232,13 @@ getThread b n = runDb $ \c -> do
         x:_ -> return $ Just $ Thread (mkThreadHead x) ps
 
 -- | Check if thread with given number exists on given board. 
-checkThread :: Board -> Int  -- ^ Post number
-    -> IO Bool
-checkThread b n = runDb $ \c -> do
-    h <-  DB.queryNamed c   "SELECT EXISTS\
-                            \(SELECT 1 FROM threads WHERE Number = :number AND Board = :board)" 
-                            [":number" := n, ":board" := b] :: IO [DB.Only Bool]
-    return $ any DB.fromOnly h
+getThreadInfo :: Board -> Int  -- ^ Post number
+    -> IO (Maybe ThreadInfo)
+getThreadInfo b n = runDb $ \c -> do
+    DB.queryNamed c     "SELECT LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount \
+                        \FROM threads WHERE Number = :number AND Board = :board" 
+                        [":number" := n, ":board" := b]
+    <&> listToMaybe
 
 -- | Get all threads from given board.
 getThreads :: Board -> IO [ThreadHead]
@@ -251,10 +251,10 @@ getThreads b = runDb $ \c -> do
 -- | Get constraints of given board, if it exists.
 getConstraints :: Board -> IO (Maybe BoardConstraints)
 getConstraints b = runDb $ \c -> do
-    bc <- DB.queryNamed c   "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
-                            \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
-                            [":board" := b] :: IO [BoardConstraints]
-    return $ listToMaybe bc
+    DB.queryNamed c     "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
+                        \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
+                        [":board" := b] :: IO [BoardConstraints]
+    <&> listToMaybe
 
 -- | Get names of all existing boards.
 getBoardNames :: IO [Board]
@@ -269,9 +269,9 @@ getBoardInfos = runDb $ \c ->
 -- | Get more detailed information for given board.
 getBoardInfo :: Board -> IO (Maybe BoardInfo)
 getBoardInfo b = runDb $ \c -> do
-    bc <- DB.queryNamed c   "SELECT Name, Title, Subtitle FROM Boards WHERE Name = :board"
-                            [":board" := b] :: IO [BoardInfo]
-    return $ listToMaybe bc
+    DB.queryNamed c     "SELECT Name, Title, Subtitle FROM Boards WHERE Name = :board"
+                        [":board" := b] :: IO [BoardInfo]
+    <&> listToMaybe
 
 -- | Insert new account into database.
 insertAccount :: Username -> PasswordHash Bcrypt -> Role -> IO ()
@@ -322,11 +322,11 @@ checkSession t = runDb $ \c -> do
 -- | Get account associated with given session token, if it exists.
 getAccountByToken :: SessionKey -> IO (Maybe AccountInfo)
 getAccountByToken t = runDb $ \c -> do
-    q <- DB.queryNamed c    "SELECT Accounts.Username, CreationDate, Role \
-                            \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
-                            \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
-                            [":token" := t]
-    return $ listToMaybe q
+    DB.queryNamed c     "SELECT Accounts.Username, CreationDate, Role \
+                        \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
+                        \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
+                        [":token" := t]
+    <&> listToMaybe
 
 -- | 
 updateBoard :: Board -- ^ Old board name.
@@ -372,17 +372,17 @@ unlinkFile b n = runDb $ \c -> do
     DB.executeNamed c   "UPDATE Posts SET FileId = NULL WHERE Board = :board AND Number = :num" 
                         [ ":board"  := b, ":num" := n]
 
-toggleQuery :: DB.Query -> Board -> Int -> IO ()
-toggleQuery q b n = runDb $ \c -> DB.execute c q (b,n)
+execOnThread :: DB.Query -> Board -> Int -> IO ()
+execOnThread q b n = runDb $ \c -> DB.execute c q (b,n)
 
 toggleSticky :: Board -> Int -> IO ()
-toggleSticky = toggleQuery "UPDATE Posts SET Sticky = NOT STICKY WHERE Board = ? AND Number = ?" 
+toggleSticky = execOnThread "UPDATE Posts SET Sticky = NOT STICKY WHERE Board = ? AND Number = ?" 
 
 toggleAutosage :: Board -> Int -> IO ()
-toggleAutosage = toggleQuery "UPDATE Posts SET Autosage = NOT Autosage WHERE Board = ? AND Number = ?" 
+toggleAutosage = execOnThread "UPDATE Posts SET Autosage = NOT Autosage WHERE Board = ? AND Number = ?" 
 
 toggleLock :: Board -> Int -> IO ()
-toggleLock = toggleQuery "UPDATE Posts SET Lock = NOT Lock WHERE Board = ? AND Number = ?" 
+toggleLock = execOnThread "UPDATE Posts SET Lock = NOT Lock WHERE Board = ? AND Number = ?" 
 
 toggleCycle :: Board -> Int -> IO ()
-toggleCycle = toggleQuery "UPDATE Posts SET Cycle = NOT Cycle WHERE Board = ? AND Number = ?"
+toggleCycle = execOnThread "UPDATE Posts SET Cycle = NOT Cycle WHERE Board = ? AND Number = ?"

@@ -57,7 +57,6 @@ main = do
             allowLoggedIn $ join $ toggleThreadAutosage <$> S.param "board" <*> S.param "num"
         S.get "/cycle/:board/:num" $ do
             allowLoggedIn $ join $ toggleThreadCycle <$> S.param "board" <*> S.param "num"
-
         S.get   "/:board" $ do
             board <- S.param "board"
             threads <- liftIO $ getThreads board

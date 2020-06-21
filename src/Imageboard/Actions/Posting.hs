@@ -48,6 +48,12 @@ tryInsertFile fdata = do
             newF <- saveFile f fdata fPath
             liftIO $ insertFile newF
 
+canReply :: ThreadInfo -> BoardConstraints -> Either Text ()
+canReply ThreadInfo{..} Constraints{..}
+    | lock flags    = Left "Thread is locked"
+    | (not $ cycle_ flags) && (replyCount == maxReplies) = Left "Thread reached maximum number of replies"
+    | otherwise = Right ()
+
 tryInsertThread :: MonadIO m => Board -> PostStub -> Maybe FileData -> ExceptT Text m ()
 tryInsertThread b stub mdata = case mdata of
     Just fdata -> do
@@ -64,12 +70,9 @@ tryInsertPost b p stub mdata = case mdata of
     Nothing -> 
         liftIO $ insertPost b p stub 
 
-validatePost :: Board -> Bool -> S.ActionM (Either Text PostStub)
-validatePost b hasFile = do
-    cs <- liftIO $ getConstraints b
-    case cs of
-        Nothing -> return $ Left "Board does not exist"
-        Just x -> tryMkStub x hasFile
+validatePost :: BoardConstraints -> Bool -> S.ActionM (Either Text PostStub)
+validatePost cstr hasFile = do
+    tryMkStub cstr hasFile
             <$> maybeParam "name"
             <*> maybeParam "email"
             <*> maybeParam "subject"
@@ -80,13 +83,13 @@ validatePost b hasFile = do
 createPost :: Board -> Int -> S.ActionM ()
 createPost b p = do 
     postFile <- maybeFile
-    stubErr <- validatePost b $ isJust postFile
     result <- runExceptT $ do 
-        stub <- liftEither $ stubErr
-        exists <- liftIO $ checkThread b p
-        if exists 
-            then tryInsertPost b p stub postFile
-            else throwError "Thread does not exist"
+        cstr <- maybetoExcept "Board does not exist" =<< (liftIO $ getConstraints b)
+        stub <- liftEither =<< (lift $ validatePost cstr $ isJust postFile)
+        info <- maybetoExcept "Thread does not exist" =<< (liftIO $ getThreadInfo b p)
+        liftEither $ canReply info cstr
+        tryInsertPost b p stub postFile
+        throwError "Thread does not exist"
     case result of
         Left msg -> do
             S.status badRequest400
@@ -100,9 +103,9 @@ createPost b p = do
 createThread :: Board -> S.ActionM ()
 createThread b = do
     postFile <- maybeFile
-    stubErr <- validatePost b $ isJust postFile
     result <- runExceptT $ do 
-        stub <- liftEither $ stubErr
+        cstr <- maybetoExcept "Board does not exist" =<< (liftIO $ getConstraints b)
+        stub <- liftEither =<< (lift $ validatePost cstr $ isJust postFile)
         tryInsertThread b stub postFile
     case result of
         Left msg -> do

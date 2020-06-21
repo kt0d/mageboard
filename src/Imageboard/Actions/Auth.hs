@@ -21,7 +21,6 @@ import Imageboard.Utils
 import Imageboard.Database
 import Imageboard.Types (AccountInfo(..),SessionKey, Role(..))
 
-
 setSessionCookie :: SessionKey -> S.ActionM ()
 setSessionCookie st = SC.setSimpleCookie "session-token" $ st <> "; SameSite=Strict; Max-Age=3600"
 
