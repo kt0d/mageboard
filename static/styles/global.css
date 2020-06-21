@@ -274,12 +274,12 @@ ul#shortcuts {
     float: right;
 }
 
-#board-navigation :before, :after {
+#board-navigation::before, #board-navigation::after {
     font-family: inherit;
     font-size: inherit;
 }
 
-#board-navigation li:first-child:before {
+#board-navigation li:first-child::before {
     content: "[";
     padding-right: 10px;
 }
@@ -289,7 +289,7 @@ ul#shortcuts {
     padding-left: 10px;
 }
 
-ul#board-navigation li+li:before {
+ul#board-navigation li+li::before {
     content: "/";
     padding-right: 10px;
 }
@@ -326,4 +326,25 @@ a.recent-threadlink {
 
 a.recent-threadlink::after {
     content: "↴";
+}
+
+/** Thread info icons **/
+
+span.thread-flags{
+    font-size: 0;
+}
+span.thread-flags > span::after {
+    font-size: 16px;
+}
+span.sticky-icon::after {
+    content: "📌 ";
+}
+span.lock-icon::after {
+    content: "🔒 ";
+}
+span.cycle-icon::after {
+    content: "🔁 ";
+}
+span.autosage-icon::after {
+    content: "🍵 ";
 }
