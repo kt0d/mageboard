@@ -1,0 +1,110 @@
+/*** General rules ***/
+
+body {
+	background: #ffe;
+	background-image: url('img/jungle_bg1.png'), url('img/jungle_bg.png');
+	background-repeat: repeat-x, repeat;
+}
+a, summary {
+    color: darkslategray;
+    text-decoration: none;
+}
+
+a:hover, summary:hover {
+    text-decoration: underline slategray;
+}
+
+div.container {
+    background-image: url('img/jungle_td.png');
+    border: 1px solid #000;
+}
+
+h1, h2 {
+    background-color: #b0c67f;
+}
+
+form input {
+    border: 1px solid #000;
+}
+
+caption {
+    background-color: #b0c67f;
+}
+
+/** POSTING *********************************/
+
+fieldset>form {
+    background-image: url('img/jungle_td.png');
+    border: 1px solid #000;
+}
+
+form th {
+    background-color: #b0c67f;
+}
+
+/**** POST STYLE *(**/
+div.post {
+    background-image: url('img/jungle_td.png');
+    border: 1px solid black;
+}
+
+div.post-container:target .post {
+    border: 2px dashed darkred;
+    background-image: url('img/jungle_td_dark.png');
+}
+
+
+div.post>div.post-header>span.post-subject {
+    color: #016;
+}
+a.post-email {
+    color: slategray;
+    text-decoration: none;
+}
+
+a.post-email:hover {
+    text-decoration: underline slategray;
+}
+
+div.post>div.post-header>span.post-name {
+    color: #070;
+}
+div.post-file-info {
+    background-color:yellow;
+}
+
+/*** Catalog ***/
+
+div.catalog-thread {
+    border: 1px solid #000;
+    border-radius: 2px;
+    background-image: url('img/jungle_td.png');
+}
+
+div.catalog-thread>div.catalog-thread-subject {
+    color: #016;
+}
+
+div.catalog-thread>div.catalog-thread-latest-post {
+    color: #636363;
+    font-size: 8pt;
+}
+
+/** navbar *(*/
+div#topbar>nav#topnav {
+    background-image: url('img/jungle_td.png');
+    border-bottom: 1px solid #000;
+}
+
+/** infobox **/
+div.infobox-content {
+    background-image: url('img/jungle_td_dark.png');
+    border: 1px solid black;
+    border-radius: 2px;
+}
+
+/** Recent page **/
+a.recent-threadlink {
+    color: darkred;
+    background-color: #b0c67f;
+}
