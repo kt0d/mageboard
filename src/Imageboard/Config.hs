@@ -20,19 +20,19 @@ cssStyles :: IsString a => [(a,a)]
 cssStyles = [("/styles/roller.css",     "Roller")
             ,("/styles/jungle.css",     "Jungle")]
 
--- | Relative path to database file.
+-- | Path to database file.
 postsDb :: IsString a => a
 postsDb = "posts.db" 
 
--- | Relative path to schema file.
+-- | Path to schema file.
 schemaFile :: IsString a => a
 schemaFile = "schema.sql"
 
--- | Relative path to media directory.
+-- | Path to media directory.
 uploadDir :: IsString a => a
 uploadDir = "static/media/"
 
--- | Relative path to media thumbnails directory.
+-- | Path to media thumbnails directory.
 thumbnailDir :: IsString a => a
 thumbnailDir = "static/media/thumb/"
 

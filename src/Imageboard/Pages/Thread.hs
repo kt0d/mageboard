@@ -10,7 +10,6 @@ import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.Printf (printf)
-import Data.Time (defaultTimeLocale)
 import Imageboard.Types
 import Imageboard.Markup
 import Imageboard.Pages.Common
@@ -60,9 +59,8 @@ fileBox f@(File{..}) = do
         showThumb = foldMap (showImage thumbLink . thumbnailDim) dim
         showFallback path = showImage path $ Dim 100 100
 
--- | A view for one post.
-postView :: Post -> H.Html 
-postView Post{..} = H.div ! A.class_ "post-container" ! A.id postNumber $ do
+basePostView :: Post -> H.Html -> H.Html
+basePostView Post{..} afterNumber = H.div ! A.class_ "post-container" ! A.id postNumber $ do
     H.div ! A.class_ "post"  $ do
         H.div ! A.class_ "post-header" $ do
             H.span ! A.class_ "post-subject" $ H.toHtml $ postSubject
@@ -77,19 +75,11 @@ postView Post{..} = H.div ! A.class_ "post-container" ! A.id postNumber $ do
                 H.a ! A.href ("#" <> postNumber) $ "No."
                 H.a ! A.href "#postform" $ H.toHtml $ number loc
             space
-            H.span ! A.class_ "mod-links" $ do
-                foldMap 
-                    (\File{..} -> do
-                        let f = H.toValue filename
-                        H.a ! A.title "Delete file" ! A.href ("/delete-file/" <> f) $ "[F]"
-                        H.a ! A.title "Unlink file" ! A.href ("/unlink" <> H.toValue postAddr) $ "[U]")
-                    file
-                H.a ! A.title "Delete post" ! A.href ("/delete" <> H.toValue postAddr) $ "[D]"
+            afterNumber
         foldMap fileBox file
         H.div ! A.class_ "post-comment" $ H.preEscapedToHtml postText
     H.br
     where  
-        postAddr = "/" <> (board loc) <> "/" <> (T.pack $ show $ number loc)
         emailTag = H.a ! A.class_ "post-email" ! A.href ("mailto:" <> H.toValue postEmail)
         postNumber = "postid" <> (H.toValue $ number loc)
         postDate = formatDate date
@@ -98,13 +88,48 @@ postView Post{..} = H.div ! A.class_ "post-container" ! A.id postNumber $ do
         postSubject = subject content
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text content
 
+postModLinks :: Post -> H.Html
+postModLinks Post{..} = do
+    foldMap 
+            (\File{..} -> do
+                let f = H.toValue filename
+                H.a ! A.title "Delete file" ! A.href ("/delete-file/" <> f) $ "[F]"
+                H.a ! A.title "Unlink file" ! A.href ("/unlink/" <> postAddrVal) $ "[U]")
+            file
+    H.a ! A.title "Delete post" ! A.href ("/delete/" <> postAddrVal) $ "[D]"
+    where  
+        postAddrVal = H.toValue $ board loc <> "/" <> (T.pack $ show $ number loc)
+
+threadModLinks :: Post -> H.Html
+threadModLinks Post{..} = do
+    H.a ! A.title "Toggle sticky" ! A.href ("/sticky/" <> postAddrVal) $ "[S]"
+    H.a ! A.title "Toggle lock" ! A.href ("/lock/" <> postAddrVal) $ "[L]"
+    H.a ! A.title "Toggle autosage" ! A.href ("/autosage/" <> postAddrVal) $ "[A]"
+    H.a ! A.title "Toggle cycle" ! A.href ("/cycle/" <> postAddrVal) $ "[C]"
+    where  
+        postAddrVal = H.toValue $ board loc <> "/" <> (T.pack $ show $ number loc)
+
+opPostView :: ThreadHead -> H.Html
+opPostView ThreadHead{..} = basePostView opPost $ do
+    H.span ! A.class_ "thread-flags" $ H.text $ flagsToText $ flags opInfo
+    space
+    H.span ! A.class_ "mod-links" $ do
+        postModLinks opPost
+        threadModLinks opPost
+
+-- | A view for one post, with mod links.
+postView :: Post -> H.Html 
+postView p = basePostView p $
+    H.span ! A.class_ "mod-links" $ postModLinks p
+
 -- | A view that renders whole thread.
 threadView :: [Board] -> Thread -> H.Html
-threadView bs (Thread h ps) = commonHtml (threadTitle h) bs $ do 
+threadView bs Thread{..} = commonHtml (threadTitle op) bs $ do 
     H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
     H.hr ! A.class_ "invisible"
-    case (loc $ opPost h) of 
+    case loc $ opPost op of 
         (PostLocation b n _) -> replyForm b n
-    addTopBottom $ H.div ! A.class_ "content" $
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> (opPost h:ps)
-    where threadTitle (ThreadHead p _) = "/" <> (board $ loc p) <> "/" <> (T.pack $ show $ number $ loc p)
+    addTopBottom $ H.div ! A.class_ "content" $ do
+        opPostView op
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> replies
+    where threadTitle (ThreadHead Post{..} _) = "/" <> board loc <> "/" <> (T.pack $ show $ number loc)

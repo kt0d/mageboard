@@ -5,6 +5,7 @@ module Imageboard.Types (
     FileType(..),
     isImage, isAudio,
     Dimensions(..),
+    ThreadFlags(..),
     ThreadInfo(..),
     ThreadHead(..),
     Thread(..),
@@ -124,12 +125,16 @@ data File = File {
     ,   dim :: Maybe Dimensions -- ^ Dimensions if they apply.
 } deriving (Show)
 
-data ThreadInfo = ThreadInfo {  
-        lastBump :: UTCTime
-    ,   sticky :: Bool -- ^ Whether thread is sticked to the top of the board.
+data ThreadFlags = Flags {
+        sticky :: Bool -- ^ Whether thread is sticked to the top of the board.
     ,   lock :: Bool  -- ^ Whether thread is closed for replies.
     ,   autosage :: Bool -- ^ Whether thread can be bumped to the top of the board.
     ,   cycle_ :: Bool -- ^ Whether old replies will be deleted will after limit of max replies is reached.
+} deriving (Show)
+
+data ThreadInfo = ThreadInfo {  
+        lastBump :: UTCTime
+    ,   flags :: ThreadFlags
     ,   replyCount :: Int -- ^ Number of replies in thread.
 } deriving (Show)
 

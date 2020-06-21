@@ -27,7 +27,8 @@ module Imageboard.Database (
     insertBoard,
     removeFile,
     removePost,
-    unlinkFile
+    unlinkFile,
+    updateThread
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -83,10 +84,11 @@ instance DB.FromRow Post where
 instance DB.FromRow ThreadInfo where
     fromRow = ThreadInfo 
                 <$> DB.fieldWith parseDate
-                <*> DB.field
-                <*> DB.field 
-                <*> DB.field
-                <*> DB.field
+                <*> (Flags 
+                    <$> DB.field
+                    <*> DB.field 
+                    <*> DB.field
+                    <*> DB.field)
                 <*> DB.field
 
 instance DB.FromRow BoardConstraints where
@@ -360,4 +362,10 @@ removePost b n = runDb $ \c -> do
 unlinkFile :: Board -> Int -> IO ()
 unlinkFile b n = runDb $ \c -> do
     DB.executeNamed c   "UPDATE Posts SET FileId = NULL WHERE Board = :board AND Number = :num" 
+                        [ ":board"  := b, ":num" := n]
+
+
+updateThread :: Board -> Int -> ThreadInfo -> IO ()
+updateThread b n ThreadInfo{..} = runDb $ \c -> do
+    DB.executeNamed c   "UPDATE Posts WHERE Board = :board AND Number = :num" 
                         [ ":board"  := b, ":num" := n]

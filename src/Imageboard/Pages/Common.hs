@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Imageboard.Pages.Common (
     flagsToText,
     space,
@@ -15,7 +15,7 @@ import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Time (formatTime, UTCTime, defaultTimeLocale, utcToLocalTime)
-import Imageboard.Types (ThreadInfo(..), File(..), isImage, Board)
+import Imageboard.Types (ThreadFlags(..), File(..), isImage, Board)
 import qualified Imageboard.Config as Config
 
 -- | Format date to YYYY-MM-DD HH:MM:SS.
@@ -23,12 +23,12 @@ formatDate :: UTCTime -> String
 formatDate = formatTime defaultTimeLocale "%F %T" . utcToLocalTime Config.timezone
 
 -- | Render flags that apply to a thread.
-flagsToText :: ThreadInfo -> Text
-flagsToText ti = 
-    if sticky ti    then "(S)" else T.empty <>
-    if lock ti      then "(L)" else T.empty <>
-    if autosage ti  then "(A)" else T.empty <>
-    if cycle_ ti    then "(C)" else T.empty
+flagsToText :: ThreadFlags -> Text
+flagsToText Flags{..} = 
+    if sticky   then "(S)" else T.empty <>
+    if lock     then "(L)" else T.empty <>
+    if autosage then "(A)" else T.empty <>
+    if cycle_   then "(C)" else T.empty
 
 -- | A space character.
 space :: H.Html 
