@@ -14,13 +14,13 @@ import qualified Data.Text as T
 import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Data.Time (formatTime, UTCTime, TimeLocale)
+import Data.Time (formatTime, UTCTime, defaultTimeLocale, utcToLocalTime)
 import Imageboard.Types (ThreadInfo(..), File(..), isImage, Board)
 import qualified Imageboard.Config as Config
 
 -- | Format date to YYYY-MM-DD HH:MM:SS.
-formatDate :: TimeLocale -> UTCTime -> String
-formatDate l = formatTime l "%F %T"
+formatDate :: UTCTime -> String
+formatDate = formatTime defaultTimeLocale "%F %T" . utcToLocalTime Config.timezone
 
 -- | Render flags that apply to a thread.
 flagsToText :: ThreadInfo -> Text

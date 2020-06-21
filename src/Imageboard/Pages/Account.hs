@@ -49,7 +49,7 @@ loggedInPage AccountInfo{..} bs = commonHtml "Your account" (map name bs) $ do
                 A.formmethod "get" ! A.value "Change password"
     when (role == Admin) $ boardListing bs
     where  
-        creatDate = formatDate defaultTimeLocale accountCreated
+        creatDate = formatDate accountCreated
 
 -- | A view with form for changing password.
 changePasswordPage :: H.Html

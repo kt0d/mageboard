@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
+import Control.Monad
 import Control.Monad.Trans
 
 import qualified Network.Wai.Middleware.RequestLogger as Wai (logStdoutDev)
@@ -12,6 +13,7 @@ import Imageboard.Pages
 import Imageboard.Actions
 import Imageboard.Utils
 
+-- | Run the server. Routing is defined here.
 main :: IO ()
 main = do
     setupDb
@@ -42,9 +44,7 @@ main = do
         S.get  "/delete-file/:name" $
             S.param "name" >>= allowLoggedIn . deleteFile
         S.get "/unlink/:board/:num" $ do
-            board <- S.param "board"
-            num <- S.param "num"
-            allowLoggedIn $ unlinkPostFile board num
+            allowLoggedIn $ join $ unlinkPostFile <$> S.param "board" <*> S.param "num"
         S.get "/delete/:board/:num" $ do
             board <- S.param "board"
             num <- S.param "num"
@@ -68,13 +68,10 @@ main = do
                 Just t -> do
                     S.status notFound404
                     blaze $ threadView bs t
-        S.post  "/post/:board" $ do
-            board <- S.param "board"
-            createThread board
+        S.post  "/post/:board" $
+            S.param "board" >>= createThread
         S.post  "/post/:board/:number" $ do
-            num <- S.param "number"
-            board <- S.param "board"
-            createPost board num
+            join $ createPost <$> S.param "board" <*> S.param "number"
         S.notFound $ do
             S.status notFound404
             blaze $ errorView "404"

@@ -5,15 +5,17 @@ module Imageboard.Config (
     postsDb,
     schemaFile,
     uploadDir,
-    thumbnailDir
+    thumbnailDir,
+    timezone
 ) where
 import Data.String (IsString)
+import Data.Time (TimeZone(..))
 
 -- Absolute path to main CSS file, with @static@ directory as root.
 cssFile :: IsString a => a
 cssFile = "/styles/global.css"
 
--- List of CSS styles.
+-- List of CSS styles with titles. First style is default.
 cssStyles :: IsString a => [(a,a)]
 cssStyles = [("/styles/roller.css",     "Roller")
             ,("/styles/jungle.css",     "Jungle")]
@@ -33,3 +35,7 @@ uploadDir = "static/media/"
 -- | Relative path to media thumbnails directory.
 thumbnailDir :: IsString a => a
 thumbnailDir = "static/media/thumb/"
+
+-- | Timezone used in date and time formatting.
+timezone :: TimeZone
+timezone = TimeZone (2*60) True "CEST"

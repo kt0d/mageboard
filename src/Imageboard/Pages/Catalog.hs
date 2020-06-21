@@ -37,7 +37,7 @@ catalogThread h = H.div ! A.class_ "catalog-thread" $ do
     where
         p = opPost h
         threadLink = "/" <> (H.toValue $ board $ loc p) <> "/" <> (H.toValue $ number $ loc p)
-        threadDate = formatDate defaultTimeLocale (lastBump $ opInfo h)
+        threadDate = formatDate $ lastBump $ opInfo h
         postEmail = email $ content p
         postSubject = subject $ content p
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content p
