@@ -32,7 +32,7 @@ sizeFormat = T.pack . toFormat
 fileBox :: File -> H.Html
 fileBox f@(File{..}) = do
     H.div ! A.class_ "post-file-info" $ do
-        H.a ! A.type_ "blank" ! A.href link $ H.text "File"
+        H.a ! A.target "blank" ! A.href link $ H.text "File"
         space
         H.toHtml $ show ext
         space

@@ -45,6 +45,7 @@ commonHtml :: Text -- ^ Title
         -> H.Html
 commonHtml pageTitle bs c = H.docTypeHtml $ do
     H.head $ do
+        H.meta ! A.charset "UTF-8"
         H.title $ H.text pageTitle
         let stylesheet = H.link ! A.type_ "text/css"
         stylesheet ! A.rel "stylesheet" ! A.href Config.cssFile
@@ -122,7 +123,7 @@ postFormTable = H.table $ H.tbody $ do
     H.tr $ do
         H.th $ H.label ! A.for "name" $ "Name"
         H.td $ H.input ! A.id "name" ! A.name "name" ! A.type_ "text" ! A.maxlength "64" 
-        H.td $ H.a ! A.class_ "close-button" ! A.href "##" $ "[X]"
+        H.td $ H.a ! A.class_ "close-button" ! A.href "#!" $ "[X]"
     H.tr $ do
         H.th $ H.label ! A.for "email" $ "Email"
         H.td $ H.input ! A.id "email" ! A.name "email" ! A.type_ "text" ! A.maxlength "320"
@@ -139,4 +140,4 @@ postFormTable = H.table $ H.tbody $ do
     H.tr $ do
         H.th $ H.label ! A.for "captcha" $ "Captcha"
         H.td $ H.input ! A.id "captcha" ! A.name "captcha" ! A.type_ "text" ! A.maxlength "10" ! A.autocomplete "off"
-        H.td $ H.img ! A.src "/captcha.png"
+        H.td $ H.img ! A.alt "captcha image" ! A.class_ "captcha" ! A.src "/captcha.png"
