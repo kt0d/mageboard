@@ -1,5 +1,5 @@
 
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, BlockArguments #-}
 module Imageboard.Actions.Moderation (
     deleteFile,
     unlinkPostFile,
@@ -19,43 +19,57 @@ import Imageboard.Utils
 import Imageboard.Database
 import Imageboard.Types (Board)
 
+checkIfPostExists :: Board -> Int -> S.ActionM ()
+checkIfPostExists b n = do
+    exist <- liftIO $ checkThread b n
+    when (not exist) $ do
+        S.status badRequest400
+        blaze $ errorView "Post does not exist"
+        S.finish
+
+doActionOnPost :: (Board -> Int -> IO ()) -> Board -> Int -> S.ActionM ()
+doActionOnPost action b n = do
+    checkIfPostExists b n
+    liftIO $ action b n
+    returnToThread b n
+
+returnToThread :: Board -> Int -> S.ActionM ()
+returnToThread b n = S.redirect $ "/" <> Lazy.fromStrict b <> "/" <> (Lazy.pack $ show n)
+
 -- | Delete file.
 deleteFile :: Text -> S.ActionM ()
 deleteFile f = do
-    liftIO $ removeFile f
-    blaze $ errorView "File removed"
+    fileId <- liftIO $ getFileId f
+    case fileId of
+        Nothing -> do
+            S.status badRequest400
+            blaze $ errorView "Post does not exist"
+        _ -> do
+            liftIO $ removeFile f
+            blaze $ errorView "File removed"
 
 -- | Remove file from post.
 unlinkPostFile :: Board -> Int -> S.ActionM ()
 unlinkPostFile b n = do
+    checkIfPostExists b n
     liftIO $ unlinkFile b n 
     blaze $ errorView "File unlinked from post"
 
 -- | Delete post.
 deletePost :: Board -> Int -> S.ActionM ()
 deletePost b n = do
+    checkIfPostExists b n
     liftIO $ removePost b n
     blaze $ errorView "Post removed"
 
-returnToThread :: Board -> Int -> S.ActionM ()
-returnToThread b n = S.redirect $ "/" <> Lazy.fromStrict b <> "/" <> (Lazy.pack $ show n)
-
 toggleThreadSticky :: Board -> Int -> S.ActionM ()
-toggleThreadSticky b n = do
-    liftIO $ toggleSticky b n
-    returnToThread b n
+toggleThreadSticky = doActionOnPost toggleSticky
 
 toggleThreadAutosage ::  Board -> Int -> S.ActionM ()
-toggleThreadAutosage b n = do
-    liftIO $ toggleAutosage b n
-    returnToThread b n
+toggleThreadAutosage = doActionOnPost toggleAutosage
 
 toggleThreadLock ::  Board -> Int -> S.ActionM ()
-toggleThreadLock b n = do
-    liftIO $ toggleLock b n
-    returnToThread b n
+toggleThreadLock = doActionOnPost toggleLock 
 
 toggleThreadCycle ::  Board -> Int -> S.ActionM ()
-toggleThreadCycle b n = do
-    liftIO $ toggleCycle b n
-    returnToThread b n
+toggleThreadCycle = doActionOnPost toggleCycle 

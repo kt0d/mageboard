@@ -11,6 +11,7 @@ module Imageboard.Database (
     -- * Post and thread queries
     getPosts,
     getThread,
+    checkThread,
     getThreads,
     getThreadInfo,
     getFileId,
@@ -152,7 +153,7 @@ insertFile f = runDb $ \c -> do
 
 -- | Insert post with no file attached into database.
 insertPost :: Board -> Int -> PostStub -> IO () 
-insertPost b p s = runDb $ \c -> do
+insertPost b p s = runDb $ \c -> DB.withTransaction c $
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Parent, Board) \
                         \VALUES (:name, :email, :subject, :text, :parent, :board)" 
                         [ ":name"       := author s
@@ -165,7 +166,7 @@ insertPost b p s = runDb $ \c -> do
 -- | Insert post with file attached, using previously obtained file Id.
 insertPostWithFile :: Board -> Int -> PostStub -> Int -- ^ fileId 
                     -> IO () -- ^ Post Id.
-insertPostWithFile b p s f = runDb $ \c -> do
+insertPostWithFile b p s f = runDb $ \c -> DB.withTransaction c $
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Parent, Board) \
                         \VALUES (:name, :email, :subject, :text, :fileid, :parent, :board)" 
                         [ ":name"       := author s
@@ -179,7 +180,6 @@ insertPostWithFile b p s f = runDb $ \c -> do
 -- | Insert new thread with no file attached.
 insertThread :: Board -> PostStub -> IO ()
 insertThread b s = runDb $ \c -> DB.withTransaction c $ do
-    DB.execute_ c "PRAGMA foreign_keys = TRUE"
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Board, \
                         \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
                         \VALUES (:name, :email, :subject, :text, :board, \
@@ -192,7 +192,7 @@ insertThread b s = runDb $ \c -> DB.withTransaction c $ do
 
 -- | Insert post with file attached, using previously obtained file Id.
 insertThreadWithFile :: Board -> PostStub -> Int -> IO ()
-insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $ do
+insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Board, \
                         \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
                         \VALUES (:name, :email, :subject, :text, :fileid, :board, \
@@ -208,15 +208,15 @@ insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $ do
 getFileId :: Text -- ^ Filename
     -> IO (Maybe Int) -- ^ File Id, if given filename exists in database.
 getFileId f = runDb $ \c -> do
-    l <- DB.queryNamed c    "SELECT Id FROM Files WHERE Name = :name" 
-                            [":name" := f] :: IO [DB.Only Int]
-    return $ DB.fromOnly <$> listToMaybe l
+    DB.queryNamed c "SELECT Id FROM Files WHERE Name = :name" 
+                    [":name" := f] :: IO [DB.Only Int]
+    <&> listToMaybe <&> fmap DB.fromOnly
 
 -- | 'getPosts' @n@ returns @n@ most recent posts, from all boards.
 getPosts :: Int -> IO [Post]
-getPosts n = runDb $ \c ->
-    DB.queryNamed c     "SELECT * FROM posts_and_files ORDER BY Date DESC LIMIT :n" 
-                        [":n" := n]
+getPosts n = runDb $ \c -> do
+    DB.queryNamed c "SELECT * FROM posts_and_files ORDER BY Date DESC LIMIT :n" 
+                    [":n" := n]
 
 -- | Get thread by board name and number.
 getThread :: Board -> Int -- ^ Post number.
@@ -232,45 +232,52 @@ getThread b n = runDb $ \c -> do
         x:_ -> return $ Just $ Thread (mkThreadHead x) ps
 
 -- | Check if thread with given number exists on given board. 
-getThreadInfo :: Board -> Int  -- ^ Post number
-    -> IO (Maybe ThreadInfo)
+checkThread :: Board -> Int -> IO Bool
+checkThread b n = runDb $ \c -> do
+    DB.queryNamed c "SELECT EXISTS\
+                    \(SELECT 1 FROM threads WHERE Number = :number AND Board = :board)" 
+                    [":number" := n, ":board" := b] :: IO [DB.Only Bool]
+    <&> any DB.fromOnly
+
+-- | Get thread information by board name and number. 
+getThreadInfo :: Board -> Int -> IO (Maybe ThreadInfo)
 getThreadInfo b n = runDb $ \c -> do
-    DB.queryNamed c     "SELECT LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount \
-                        \FROM threads WHERE Number = :number AND Board = :board" 
-                        [":number" := n, ":board" := b]
+    DB.queryNamed c "SELECT LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount \
+                    \FROM threads WHERE Number = :number AND Board = :board" 
+                    [":number" := n, ":board" := b]
     <&> listToMaybe
 
 -- | Get all threads from given board.
 getThreads :: Board -> IO [ThreadHead]
 getThreads b = runDb $ \c -> do
-    q <- DB.queryNamed c    "SELECT * FROM threads WHERE Board = :board \
-                            \ORDER BY Sticky DESC, LastBump DESC" 
-                            [":board" := b]
-    return $ map mkThreadHead q
+    DB.queryNamed c "SELECT * FROM threads WHERE Board = :board \
+                    \ORDER BY Sticky DESC, LastBump DESC" 
+                    [":board" := b]
+    <&> map mkThreadHead
 
 -- | Get constraints of given board, if it exists.
 getConstraints :: Board -> IO (Maybe BoardConstraints)
 getConstraints b = runDb $ \c -> do
-    DB.queryNamed c     "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
-                        \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
-                        [":board" := b] :: IO [BoardConstraints]
+    DB.queryNamed c "SELECT Lock, PostMinLength, PostMaxLength, PostMaxNewlines, \
+                    \PostLimit, ThreadLimit FROM Boards WHERE Name = :board"
+                    [":board" := b] :: IO [BoardConstraints]
     <&> listToMaybe
 
 -- | Get names of all existing boards.
 getBoardNames :: IO [Board]
-getBoardNames = runDb $ \c ->
-    (fmap . fmap) DB.fromOnly $ DB.query_ c "SELECT Name From Boards"
+getBoardNames = runDb $ \c -> do
+    DB.query_ c "SELECT Name From Boards" <&> map DB.fromOnly
 
 -- | Get more detailed information for all existing boards.
 getBoardInfos :: IO [BoardInfo]
-getBoardInfos = runDb $ \c ->
+getBoardInfos = runDb $ \c -> do
     DB.query_ c "SELECT Name, Title, Subtitle From Boards"
 
 -- | Get more detailed information for given board.
 getBoardInfo :: Board -> IO (Maybe BoardInfo)
 getBoardInfo b = runDb $ \c -> do
-    DB.queryNamed c     "SELECT Name, Title, Subtitle FROM Boards WHERE Name = :board"
-                        [":board" := b] :: IO [BoardInfo]
+    DB.queryNamed c "SELECT Name, Title, Subtitle FROM Boards WHERE Name = :board"
+                    [":board" := b] :: IO [BoardInfo]
     <&> listToMaybe
 
 -- | Insert new account into database.
@@ -314,18 +321,18 @@ removeSessionToken t = runDb $ \c -> do
 -- | Check if session token is still valid.
 checkSession :: SessionKey -> IO Bool
 checkSession t = runDb $ \c -> do
-    q <- DB.queryNamed c    "SELECT EXISTS(SELECT * FROM Sessions WHERE Key = :token \
-                            \AND ExpireDate > STRFTIME('%s', 'now'))"
-                            [":token" := t]  :: IO [DB.Only Bool]
-    return $ any DB.fromOnly q
+    DB.queryNamed c "SELECT EXISTS(SELECT * FROM Sessions WHERE Key = :token \
+                    \AND ExpireDate > STRFTIME('%s', 'now'))"
+                    [":token" := t]  :: IO [DB.Only Bool]
+    <&> any DB.fromOnly
 
 -- | Get account associated with given session token, if it exists.
 getAccountByToken :: SessionKey -> IO (Maybe AccountInfo)
 getAccountByToken t = runDb $ \c -> do
-    DB.queryNamed c     "SELECT Accounts.Username, CreationDate, Role \
-                        \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
-                        \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
-                        [":token" := t]
+    DB.queryNamed c "SELECT Accounts.Username, CreationDate, Role \
+                    \FROM Accounts JOIN Sessions ON Accounts.Username = Sessions.Username \
+                    \WHERE Sessions.Key = :token AND ExpireDate > STRFTIME('%s', 'now')"
+                    [":token" := t]
     <&> listToMaybe
 
 -- | 

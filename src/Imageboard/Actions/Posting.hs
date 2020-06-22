@@ -89,7 +89,6 @@ createPost b p = do
         info <- maybetoExcept "Thread does not exist" =<< (liftIO $ getThreadInfo b p)
         liftEither $ canReply info cstr
         tryInsertPost b p stub postFile
-        throwError "Thread does not exist"
     case result of
         Left msg -> do
             S.status badRequest400

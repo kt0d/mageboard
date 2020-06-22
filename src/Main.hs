@@ -32,12 +32,7 @@ main = do
         S.post  "/logout"   $ logout
         S.get   "/changepass"    $ allowLoggedIn (blaze changePasswordPage)
         S.post  "/changepass"    $ allowLoggedIn changePass
-        S.get   "/boardedit/:board" $ allowAdmin $ do
-            board <- S.param "board"
-            info <- liftIO $ getBoardInfo board
-            cs <- liftIO $ getConstraints board
-            case (info, cs) of
-                (Just i, Just c) -> blaze $ boardModifyPage i c
+        S.get   "/boardedit/:board" $ allowAdmin $ S.param "board" >>= prepareBoardEdit
         S.post  "/boardedit/:board" $ allowAdmin modifyBoard
         S.get   "/newboard" $ allowAdmin (blaze createBoardPage)
         S.post  "/newboard" $ allowAdmin createBoard
