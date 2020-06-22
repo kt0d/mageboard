@@ -2,15 +2,17 @@
 module Imageboard.Actions.Admin (
     modifyBoard,
     createBoard,
-    prepareBoardEdit
+    prepareBoardEdit,
+    createAccount
 ) where
 import Control.Monad.Except
+import qualified Data.Password.Bcrypt as P
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (created201, badRequest400)
 import Imageboard.Pages (errorView, boardModifyPage)
 import Imageboard.Utils
 import Imageboard.Database
-import Imageboard.Types (Board, BoardInfo(..), BoardConstraints(..))
+import Imageboard.Types (Role(..), Board, BoardInfo(..), BoardConstraints(..))
 
 loadBoardFormThen :: (BoardInfo -> BoardConstraints -> S.ActionM ()) -> S.ActionM ()
 loadBoardFormThen action = do
@@ -56,4 +58,19 @@ prepareBoardEdit b = do
             S.status badRequest400
             blaze $ errorView "Board does not exist"
 
--- createAccount :: 
+createAccount :: S.ActionM ()
+createAccount = do
+    pass <- P.mkPassword <$> S.param "password"
+    user <- S.param "username"
+    runExceptT $ do
+        exists <- liftIO $ checkAccount user
+        when exists $ throwError "Account with this username already exists"
+        hash <- liftIO $ P.hashPassword pass
+        liftIO $ insertAccount user hash Moderator
+    >>= either
+        (\msg -> do
+            S.status badRequest400
+            blaze $ errorView msg)
+        (\_ -> do
+            S.status created201
+            blaze $ errorView "Account succesfully created")

@@ -2,16 +2,17 @@
 module Imageboard.Pages.Account (
     loginView,
     loggedInPage,
+    adminLoggedInPage,
     changePasswordPage,
     boardModifyPage,
-    createBoardPage
+    createBoardPage,
+    createAccountPage
 ) where
-import Control.Monad
 import Text.Blaze.Html5((!), (!?))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Imageboard.Pages.Common
-import Imageboard.Types (AccountInfo(..), BoardInfo(..), BoardConstraints(..), Role(..))
+import Imageboard.Types (Board, AccountInfo(..), BoardInfo(..), BoardConstraints(..))
 
 -- | A view with form for logging in.
 loginView :: H.Html
@@ -27,10 +28,14 @@ loginView = commonHtml "Log in" [] $ do
         H.input ! A.type_ "submit" ! A.value "Log in" 
 
 -- | A view rendering account information and role specific information.
-loggedInPage :: AccountInfo -> [BoardInfo] -> H.Html
-loggedInPage AccountInfo{..} bs = commonHtml "Your account" (map name bs) $ do
-    H.div $ H.fieldset $ H.form $ do
-        H.table ! A.class_ "listdata" $ H.tbody $ do
+loggedInPage :: AccountInfo -> [Board] -> H.Html
+loggedInPage acc bs = commonHtml "Your account" bs $ commonLoggedIn acc
+    
+commonLoggedIn :: AccountInfo -> H.Html
+commonLoggedIn AccountInfo{..} = H.div $ H.fieldset $ H.form $ do
+    H.table ! A.class_ "listdata" $ do
+        H.caption "Your account" 
+        H.tbody $ do
             H.tr $ do
                 H.th $ "Username"
                 H.td $ H.text $ user
@@ -40,15 +45,20 @@ loggedInPage AccountInfo{..} bs = commonHtml "Your account" (map name bs) $ do
             H.tr $ do
                 H.th $ "Role"
                 H.td $ H.string $ show role
-        H.br
-        H.input ! A.type_ "submit" ! A.formaction "/logout" ! 
-                A.formmethod "post" ! A.value "Log out"
-        H.br
-        H.input ! A.type_ "submit" ! A.formaction "/changepass" ! 
-                A.formmethod "get" ! A.value "Change password"
-    when (role == Admin) $ boardListing bs
+    H.br
+    H.input ! A.type_ "submit" ! A.formaction "/logout" ! 
+            A.formmethod "post" ! A.value "Log out"
+    H.br
+    H.input ! A.type_ "submit" ! A.formaction "/changepass" ! 
+            A.formmethod "get" ! A.value "Change password"
     where  
         creatDate = formatDate accountCreated
+
+adminLoggedInPage :: AccountInfo -> [BoardInfo] -> [AccountInfo] -> H.Html
+adminLoggedInPage acc bs as = commonHtml "Your account" (map name bs) $ do
+    commonLoggedIn acc
+    boardListing bs
+    accountListing as
 
 -- | A view with form for changing password.
 changePasswordPage :: H.Html
@@ -127,3 +137,33 @@ boardModifyPage bi@(BoardInfo{..}) bc = commonHtml "Modify existing board" [] $
         A.method "post" ! A.action ("/boardedit/" <> H.toValue name) $ do
         boardEditTable bi bc
         H.input ! A.type_ "submit" ! A.value "Modify board" 
+
+createAccountPage :: H.Html
+createAccountPage = commonHtml "Create moderator account" [] $ do
+    H.div $ H.fieldset $ H.form ! A.action "/create-account" ! A.method "post" $ 
+        H.table $ H.tbody $ do
+        H.tr $ do
+            H.th $ H.label ! A.for "username" $ "Username"
+            H.td $ H.input ! A.id "username" ! A.name "username" ! A.type_ "text" ! A.maxlength "64"
+        H.tr $ do
+            H.th $ H.label ! A.for "password" $ "Password"
+            H.td $ H.input ! A.id "password" ! A.name "password" ! A.type_ "password" ! A.maxlength "320"
+        H.tr $ do
+            H.th $ H.label ! A.for "create" $ "Submit"
+            H.td $ H.input ! A.id "create" ! A.type_ "submit" ! A.value "Create account" 
+
+accountListing :: [AccountInfo] -> H.Html
+accountListing as = H.fieldset $ H.form $  do
+    H.table ! A.class_ "listdata" $ do
+        H.caption "Accounts"
+        H.thead $ H.tr $ do
+            H.th "Username"
+            H.th "Role"
+            H.th "Created on"
+        H.tbody $ do
+            flip foldMap as $ \AccountInfo{..} -> H.tr $ do
+                H.td $ H.toHtml user
+                H.td $ H.toHtml $ show role
+                let creatDate = formatDate accountCreated
+                H.td $ H.time ! A.datetime (H.toValue creatDate) $ (H.toHtml creatDate)
+            H.tr $ H.td ! A.colspan "3" $ H.a ! A.href "/create-account" $ "Create new account"

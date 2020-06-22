@@ -16,7 +16,7 @@ import qualified Web.Scotty.Cookie as SC
 import Network.HTTP.Types.Status (unauthorized401)
 import qualified Data.Password.Bcrypt as P
 import Crypto.Random (getRandomBytes)
-import Imageboard.Pages (errorView, loginView, loggedInPage)
+import Imageboard.Pages (errorView, loginView, loggedInPage, adminLoggedInPage)
 import Imageboard.Utils
 import Imageboard.Database
 import Imageboard.Types (AccountInfo(..),SessionKey, Role(..))
@@ -63,13 +63,18 @@ modPage = do
     case key of
         Nothing -> blaze $ loginView
         Just k -> do
-            account <- liftIO $ getAccountByToken k
-            case account of
-                Just a -> do
-                    bs <- liftIO $ getBoardInfos
-                    blaze $ loggedInPage a bs
-                Nothing -> do
-                    disallow "Your session token is invalid or expired"
+            runExceptT $ do
+                acc@(AccountInfo{..}) <- maybetoExcept "Your session token is invalid or expired" 
+                    =<< (liftIO $ getAccountByToken k)
+                case role of
+                    Admin -> do 
+                        bs <- liftIO $ getBoardInfos
+                        as <- liftIO $ getAccounts
+                        lift $ blaze $ adminLoggedInPage acc bs as
+                    _ -> do
+                        bs <- liftIO $ getBoardNames 
+                        lift $ blaze $ loggedInPage acc bs
+            >>= either (blaze .errorView) (const S.finish)
 
 -- | Try to log in a user with supplied data from login form.
 tryLogin :: S.ActionM ()
@@ -117,4 +122,4 @@ changePass = do
             _ -> throwError "Wrong password"
     >>= either
         disallow
-        (const $ S.text "ok")
+        (const $ blaze $ errorView "Password succesfully changed.")

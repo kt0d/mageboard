@@ -26,7 +26,9 @@ module Imageboard.Database (
     getPasswordHash,
     insertSessionToken,
     removeSessionToken,
+    getAccounts,
     getAccountByToken,
+    checkAccount,
     checkSession,
     insertAccount,
     changePassword,
@@ -39,6 +41,7 @@ module Imageboard.Database (
     toggleLock,
     toggleAutosage,
     toggleCycle,
+    -- * Captcha
     insertCaptcha,
     checkCaptcha
 ) where
@@ -291,6 +294,17 @@ insertAccount u h r = runDb $ \c -> do
                         , ":hash"   := unPasswordHash h
                         , ":role"   := fromEnum r]
 
+-- | Get list of all accounts.
+getAccounts :: IO [AccountInfo]
+getAccounts = runDb $ \c -> do
+    DB.query_ c "SELECT Username, CreationDate, Role FROM Accounts"
+
+-- | Check if account with given username exists.
+checkAccount :: Username -> IO Bool
+checkAccount u = runDb $ \c -> do
+    DB.query c  "SELECT EXISTS(SELECT * FROM Accounts WHERE Username = ?)" (DB.Only u)
+    <&> any DB.fromOnly
+
 -- | Change password of given user.
 changePassword :: Username -> PasswordHash Bcrypt -> IO ()
 changePassword u h = runDb $ \c -> do
@@ -337,7 +351,7 @@ getAccountByToken t = runDb $ \c -> do
                     [":token" := t]
     <&> listToMaybe
 
--- | 
+-- | Change board configuration.
 updateBoard :: Board -- ^ Old board name.
             -> BoardInfo -> BoardConstraints -> IO ()
 updateBoard b BoardInfo{..} Constraints{..} = runDb $ \c -> do
@@ -396,11 +410,13 @@ toggleLock = execOnThread "UPDATE Posts SET Lock = NOT Lock WHERE Board = ? AND 
 toggleCycle :: Board -> Int -> IO ()
 toggleCycle = execOnThread "UPDATE Posts SET Cycle = NOT Cycle WHERE Board = ? AND Number = ?"
 
+-- | Store new captcha in database. Delete expired captchas.
 insertCaptcha :: String -> IO ()
 insertCaptcha t = runDb $ \c -> do
     DB.execute_ c "DELETE FROM Captchas WHERE ExpireDate < strftime('%s','now')"
     DB.execute c "INSERT INTO Captchas (Text) VALUES (?)" $ DB.Only t
 
+-- | Check if captcha  exists and is unexpired.
 checkCaptcha :: Text -> IO Bool
 checkCaptcha t = runDb $ \c -> do
     isValid <- DB.query c "SELECT EXISTS(SELECT * FROM CAPTCHAS \

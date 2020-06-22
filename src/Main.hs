@@ -35,6 +35,8 @@ main = do
         S.post  "/logout"           $ logout
         S.get   "/changepass"       $ allowLoggedIn (blaze changePasswordPage)
         S.post  "/changepass"       $ allowLoggedIn changePass
+        S.get   "/create-account"   $ allowAdmin $ blaze createAccountPage
+        S.post  "/create-account"   $ allowAdmin createAccount
         S.get   "/boardedit/:board" $ allowAdmin $ S.param "board" >>= prepareBoardEdit
         S.post  "/boardedit/:board" $ allowAdmin modifyBoard
         S.get   "/newboard"         $ allowAdmin (blaze createBoardPage)

@@ -13,7 +13,7 @@ import Control.Monad.Except
 import qualified Data.Text.Lazy as Lazy
 import Data.Text (Text)
 import qualified Web.Scotty as S
-import Network.HTTP.Types.Status (created201, badRequest400)
+import Network.HTTP.Types.Status (badRequest400)
 import Imageboard.Pages (errorView)
 import Imageboard.Utils
 import Imageboard.Database
