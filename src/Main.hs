@@ -26,37 +26,32 @@ main = do
             (sol,cap) <- liftIO $ makeCaptcha
             liftIO $ insertCaptcha sol
             S.raw $ BS.fromStrict cap
-        S.get   "/" $ do
-            bs <- liftIO $ getBoardInfos
-            blaze $ homePage bs
-        S.get   "/recent" $ do
-            bs <- liftIO $ getBoardNames
-            ps <- liftIO $ getPosts 100
-            blaze $ recentView bs ps
-        S.get   "/mod"      $ modPage
-        S.post  "/login"    $ tryLogin
-        S.post  "/logout"   $ logout
-        S.get   "/changepass"    $ allowLoggedIn (blaze changePasswordPage)
-        S.post  "/changepass"    $ allowLoggedIn changePass
+        S.get   "/" $
+            blaze =<< liftIO (homePage <$> getBoardInfos)
+        S.get   "/recent" $
+            blaze =<< liftIO (recentView <$> getBoardNames <*> getPosts 100)
+        S.get   "/mod"              $ modPage
+        S.post  "/login"            $ tryLogin
+        S.post  "/logout"           $ logout
+        S.get   "/changepass"       $ allowLoggedIn (blaze changePasswordPage)
+        S.post  "/changepass"       $ allowLoggedIn changePass
         S.get   "/boardedit/:board" $ allowAdmin $ S.param "board" >>= prepareBoardEdit
         S.post  "/boardedit/:board" $ allowAdmin modifyBoard
-        S.get   "/newboard" $ allowAdmin (blaze createBoardPage)
-        S.post  "/newboard" $ allowAdmin createBoard
-        S.get  "/delete-file/:name" $
+        S.get   "/newboard"         $ allowAdmin (blaze createBoardPage)
+        S.post  "/newboard"         $ allowAdmin createBoard
+        S.get  "/delete-file/:name" $ 
             S.param "name" >>= allowLoggedIn . deleteFile
-        S.get "/unlink/:board/:num" $ do
+        S.get "/unlink/:board/:num" $ 
             allowLoggedIn $ join $ unlinkPostFile <$> S.param "board" <*> S.param "num"
-        S.get "/delete/:board/:num" $ do
-            board <- S.param "board"
-            num <- S.param "num"
-            allowLoggedIn $ deletePost board num
-        S.get "/sticky/:board/:num" $ do
+        S.get "/delete/:board/:num" $
+            allowLoggedIn $ join $deletePost <$> S.param "board" <*> S.param "num"
+        S.get "/sticky/:board/:num" $
             allowLoggedIn $ join $ toggleThreadSticky <$> S.param "board" <*> S.param "num"
-        S.get "/lock/:board/:num" $ do
+        S.get "/lock/:board/:num" $
             allowLoggedIn $ join $ toggleThreadLock <$> S.param "board" <*> S.param "num"
-        S.get "/autosage/:board/:num" $ do
+        S.get "/autosage/:board/:num" $
             allowLoggedIn $ join $ toggleThreadAutosage <$> S.param "board" <*> S.param "num"
-        S.get "/cycle/:board/:num" $ do
+        S.get "/cycle/:board/:num" $
             allowLoggedIn $ join $ toggleThreadCycle <$> S.param "board" <*> S.param "num"
         S.get   "/:board" $ do
             board <- S.param "board"
