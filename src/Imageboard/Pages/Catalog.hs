@@ -42,11 +42,17 @@ catalogThread ThreadHead{..} = H.div ! A.class_ "catalog-thread" $ do
         postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content opPost
 
 -- | Render list of all threads on a board.
-catalogView :: [Board] -> Board -> [ThreadHead] -> H.Html
-catalogView bs b ts = commonHtml ("/" <> b <> "/ - catalog") bs $ do
-    H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
-    H.hr ! A.class_ "invisible"
-    threadForm b
-    addTopBottom $ H.div ! A.class_ "content" $
-        H.div ! A.class_ "catalog-container" $
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts
+catalogView :: BoardInfo -> BoardConstraints -> [Board] -> [ThreadHead] -> H.Html
+catalogView BoardInfo{..} Constraints{..} bs ts = 
+    let header = "/" <> name <> "/ - " <> title in
+    commonHtml (header <> " - catalog") bs $ do
+        H.h1 $ H.toHtml $ header
+        if isLocked
+            then H.h3 "Board is locked."
+            else do
+                H.a ! A.id "new-post" ! A.href "#postform" $ "[New thread]"
+                H.hr ! A.class_ "invisible"
+                threadForm name
+        addTopBottom $ H.div ! A.class_ "content" $
+            H.div ! A.class_ "catalog-container" $
+            mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts

@@ -123,12 +123,16 @@ postView p = basePostView p $
     H.span ! A.class_ "mod-links" $ postModLinks p
 
 -- | A view that renders whole thread.
-threadView :: [Board] -> Thread -> H.Html
-threadView bs Thread{..} = commonHtml (threadTitle op) bs $ do 
-    H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
-    H.hr ! A.class_ "invisible"
-    case loc $ opPost op of 
-        (PostLocation b n _) -> replyForm b n
+threadView :: BoardInfo -> BoardConstraints -> [Board] -> Thread -> H.Html
+threadView BoardInfo{..} Constraints{..} bs Thread{..} = commonHtml (threadTitle op) bs $ do 
+    if isLocked
+        then H.h3 "Board is locked."
+        else if lock $ flags $ opInfo $ op 
+            then H.h3 "Thread is locked. You cannot reply."
+            else do
+                H.a ! A.id "new-post" ! A.href "#postform" $ "[Reply]"
+                H.hr ! A.class_ "invisible"
+                case loc $ opPost op of (PostLocation b n _) -> replyForm b n
     addTopBottom $ H.div ! A.class_ "content" $ do
         opPostView op
         mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> replies

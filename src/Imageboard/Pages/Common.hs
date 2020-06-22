@@ -92,15 +92,11 @@ navBar bs = H.div ! A.id "topbar" $
 -- | Add navigation links that bring to top and bottom of the page.
 addTopBottom :: H.Html -> H.Html
 addTopBottom c = do
-    H.nav $ do
-        H.a ! A.href "#bottom-of-page" $ "[Go to bottom]"
+    H.nav $ H.a ! A.href "#bottom-of-page" $ "[Go to bottom]"
     H.hr
     c
     H.hr
-    H.nav $ do
-        H.a ! A.href "#top-of-page" $ "[Go to top]"
-        space
-        H.a ! A.href "#postform" $ "[Open form]"
+    H.nav $ H.a ! A.href "#top-of-page" $ "[Go to top]"
 
 -- | A form for creating threads on given board.
 threadForm :: Board -> H.Html

@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, BlockArguments #-}
 module Imageboard.Actions.Posting (
     createPost,
     createThread
@@ -42,12 +42,13 @@ tryMkStub Constraints{..} hasFile a e s t
 tryInsertFile :: MonadIO m => FileData -> ExceptT Text m Int
 tryInsertFile fdata = do
     (f, fPath) <- liftEither $ tryMkFile fdata
-    exists <- liftIO $ getFileId $ filename f
-    case exists of
-        Just fileId -> return fileId
-        Nothing -> do
+    exists <-liftIO $ getFileId $ filename f
+    maybe
+        do
             newF <- saveFile f fdata fPath
             liftIO $ insertFile newF
+        return
+        exists
 
 canReply :: ThreadInfo -> BoardConstraints -> Either Text ()
 canReply ThreadInfo{..} Constraints{..}
@@ -56,20 +57,20 @@ canReply ThreadInfo{..} Constraints{..}
     | otherwise = Right ()
 
 tryInsertThread :: MonadIO m => Board -> PostStub -> Maybe FileData -> ExceptT Text m ()
-tryInsertThread b stub mdata = case mdata of
-    Just fdata -> do
+tryInsertThread b stub = maybe
+    do liftIO $ insertThread b stub 
+    \fdata -> do
         fileId <- tryInsertFile fdata
         liftIO $ insertThreadWithFile b stub fileId
-    Nothing -> 
-        liftIO $ insertThread b stub 
+    
 
 tryInsertPost :: MonadIO m => Board -> Int -> PostStub -> Maybe FileData -> ExceptT Text m ()
-tryInsertPost b p stub mdata = case mdata of
-    Just fdata -> do
+tryInsertPost b p stub = maybe
+    do liftIO $ insertPost b p stub 
+    \fdata -> do
         fileId <- tryInsertFile fdata
         liftIO $ insertPostWithFile b p stub fileId
-    Nothing -> 
-        liftIO $ insertPost b p stub 
+        
 
 validatePost :: BoardConstraints -> Bool -> S.ActionM (Either Text PostStub)
 validatePost cstr hasFile = do
@@ -111,15 +112,15 @@ createThread :: Board -> S.ActionM ()
 createThread b = do
     postFile <- maybeFile
     captcha <- S.param "captcha"
-    result <- runExceptT $ do 
+    runExceptT do 
         validateCaptcha captcha
         cstr <- maybetoExcept "Board does not exist" =<< (liftIO $ getConstraints b)
         stub <- liftEither =<< (lift $ validatePost cstr $ isJust postFile)
         tryInsertThread b stub postFile
-    case result of
-        Left msg -> do
+    >>= either
+        (\msg -> do
             S.status badRequest400
-            blaze $ errorView msg
-        Right _ -> do
+            blaze $ errorView msg)
+        (\_ -> do
             S.status created201
-            S.redirect $ "/" <> Lazy.fromStrict b
+            S.redirect $ "/" <> Lazy.fromStrict b)
