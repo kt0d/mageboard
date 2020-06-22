@@ -1,3 +1,5 @@
+--- This is slightly modified picochan schema.
+
 --- TABLES ---------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS Boards (

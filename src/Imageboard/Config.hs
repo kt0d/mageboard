@@ -17,7 +17,7 @@ cssFile = "/styles/global.css"
 
 -- | List of CSS styles with titles. First style is default.
 cssStyles :: IsString a => [(a,a)]
-cssStyles = [("/styles/roller.css",     "Roller")
+cssStyles = reverse [("/styles/roller.css",     "Roller")
             ,("/styles/jungle.css",     "Jungle")]
 
 -- | Path to database file.
