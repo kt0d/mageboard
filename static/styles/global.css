@@ -43,6 +43,10 @@ h2 {
     padding-left: 10pt;
 }
 
+h3 {
+    text-align: center;
+}
+
 form input {
     width: 200px;
     padding: 1px;
@@ -116,7 +120,7 @@ fieldset>form>label {
 }
 
 textarea {
-    border: 1px solid #000;
+    border: 1px solid black;
     width: 100%;
     resize: both;
     min-width: 200px;
@@ -133,6 +137,10 @@ textarea {
 #postform input[type="file"] {
     width: 100%;
     max-width: 400px;
+}
+
+img.captcha {
+    border: 1px solid black;
 }
 
 /*** Post style ***/

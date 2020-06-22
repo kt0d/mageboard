@@ -1,5 +1,10 @@
 /*** General rules ***/
 
+:root{
+    --color-primary: turquoise;
+    --color-secondary: paleturquoise;
+}
+
 body {
     background-color: darkgray;
 }
@@ -14,12 +19,12 @@ a:hover, summary:hover {
 }
 
 div.container {
-    background-color: paleturquoise;
+    background-color: var(--color-secondary);
     border: 1px solid #000;
 }
 
 h1, h2 {
-    background: turquoise;
+    background: var(--color-primary);
 }
 
 form input {
@@ -27,29 +32,29 @@ form input {
 }
 
 caption {
-    background-color: turquoise;
+    background-color: var(--color-primary);
 }
 
 /** POSTING *********************************/
 
 fieldset>form {
-    background-color: paleturquoise;
+    background-color: var(--color-secondary);
     border: 1px solid #000;
 }
 
 form th {
-    background-color: turquoise;
+    background-color: var(--color-primary);
 }
 
 /**** POST STYLE *(**/
 div.post {
-    background-color: paleturquoise;
+    background-color: var(--color-secondary);
     border: 1px solid black;
 }
 
 div.post-container:target .post {
     border: 2px dashed darkred;
-    background-color: turquoise;
+    background-color: var(--color-primary);
 }
 
 
@@ -75,9 +80,9 @@ div.post-file-info {
 /*** Catalog ***/
 
 div.catalog-thread {
-    border: 1px solid #000;
+    border: 1px solid black;
     border-radius: 2px;
-    background-color: paleturquoise;
+    background-color: var(--color-secondary);
 }
 
 div.catalog-thread>div.catalog-thread-subject {
@@ -91,13 +96,13 @@ div.catalog-thread>div.catalog-thread-latest-post {
 
 /** navbar *(*/
 div#topbar>nav#topnav {
-    background-color: paleturquoise;
+    background-color: var(--color-secondary);
     border-bottom: 1px solid #000;
 }
 
 /** infobox **/
 div.infobox-content {
-    background-color: turquoise;
+    background-color: var(--color-primary);
     border: 1px solid black;
     border-radius: 2px;
 }
