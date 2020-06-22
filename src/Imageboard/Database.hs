@@ -38,7 +38,9 @@ module Imageboard.Database (
     toggleSticky,
     toggleLock,
     toggleAutosage,
-    toggleCycle
+    toggleCycle,
+    insertCaptcha,
+    checkCaptcha
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -393,3 +395,15 @@ toggleLock = execOnThread "UPDATE Posts SET Lock = NOT Lock WHERE Board = ? AND 
 
 toggleCycle :: Board -> Int -> IO ()
 toggleCycle = execOnThread "UPDATE Posts SET Cycle = NOT Cycle WHERE Board = ? AND Number = ?"
+
+insertCaptcha :: String -> IO ()
+insertCaptcha t = runDb $ \c -> do
+    DB.execute_ c "DELETE FROM Captchas WHERE ExpireDate < strftime('%s','now')"
+    DB.execute c "INSERT INTO Captchas (Text) VALUES (?)" $ DB.Only t
+
+checkCaptcha :: Text -> IO Bool
+checkCaptcha t = runDb $ \c -> do
+    isValid <- DB.query c "SELECT EXISTS(SELECT * FROM CAPTCHAS \
+                \WHERE Text = upper(?) AND ExpireDate >= strftime('%s','now'))" $ DB.Only t :: IO [DB.Only Bool]
+    DB.execute c "DELETE FROM Captchas WHERE Text = upper(?)" $ DB.Only t
+    return $ any DB.fromOnly isValid

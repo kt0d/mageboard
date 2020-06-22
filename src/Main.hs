@@ -7,11 +7,13 @@ import qualified Network.Wai.Middleware.RequestLogger as Wai (logStdoutDev)
 import qualified Network.Wai.Middleware.Static as Wai 
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
+import qualified Data.ByteString.Lazy as BS
 
 import Imageboard.Database
 import Imageboard.Pages 
 import Imageboard.Actions
 import Imageboard.Utils
+import Graphics.Captcha
 
 -- | Run the server. Routing is defined here.
 main :: IO ()
@@ -20,6 +22,10 @@ main = do
     S.scotty 3000 $ do
         S.middleware Wai.logStdoutDev
         S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
+        S.get   "/captcha.png" $ do
+            (sol,cap) <- liftIO $ makeCaptcha
+            liftIO $ insertCaptcha sol
+            S.raw $ BS.fromStrict cap
         S.get   "/" $ do
             bs <- liftIO $ getBoardInfos
             blaze $ homePage bs

@@ -138,4 +138,5 @@ postFormTable = H.table $ H.tbody $ do
         H.td ! A.colspan "2" $ H.input ! A.id "file" ! A.type_ "file" ! A.name "file"
     H.tr $ do
         H.th $ H.label ! A.for "captcha" $ "Captcha"
-        H.td $ H.input ! A.id "captcha" ! A.name "captcha" ! A.type_ "text" ! A.maxlength "320" ! A.autocomplete "off"
+        H.td $ H.input ! A.id "captcha" ! A.name "captcha" ! A.type_ "text" ! A.maxlength "10" ! A.autocomplete "off"
+        H.td $ H.img ! A.src "/captcha.png"

@@ -5,6 +5,7 @@ module Imageboard.Actions.Posting (
 ) where
 import Control.Monad.Except
 import Data.Maybe
+import Data.String (IsString)
 import Data.Foldable (fold)
 import Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy
@@ -78,12 +79,19 @@ validatePost cstr hasFile = do
             <*> maybeParam "subject"
             <*> maybeParam "comment"
 
+validateCaptcha :: (IsString a, MonadIO m, MonadError a m) => Text -> m ()
+validateCaptcha captcha = do
+    validCaptcha <- liftIO $ checkCaptcha captcha
+    when (not validCaptcha) $ throwError "Invalid or expired captcha"
+
 -- | This action will try to insert post sent by the user.
 -- In case of failure it will send user appropriate error page.
 createPost :: Board -> Int -> S.ActionM ()
 createPost b p = do 
+    captcha <- S.param "captcha"
     postFile <- maybeFile
     result <- runExceptT $ do 
+        validateCaptcha captcha
         cstr <- maybetoExcept "Board does not exist" =<< (liftIO $ getConstraints b)
         stub <- liftEither =<< (lift $ validatePost cstr $ isJust postFile)
         info <- maybetoExcept "Thread does not exist" =<< (liftIO $ getThreadInfo b p)
@@ -102,7 +110,9 @@ createPost b p = do
 createThread :: Board -> S.ActionM ()
 createThread b = do
     postFile <- maybeFile
+    captcha <- S.param "captcha"
     result <- runExceptT $ do 
+        validateCaptcha captcha
         cstr <- maybetoExcept "Board does not exist" =<< (liftIO $ getConstraints b)
         stub <- liftEither =<< (lift $ validatePost cstr $ isJust postFile)
         tryInsertThread b stub postFile
@@ -113,4 +123,3 @@ createThread b = do
         Right _ -> do
             S.status created201
             S.redirect $ "/" <> Lazy.fromStrict b
-

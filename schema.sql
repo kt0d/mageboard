@@ -74,6 +74,11 @@ CREATE TABLE IF NOT EXISTS Sessions (
     FOREIGN KEY (Username) REFERENCES Accounts (Username) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS Captchas (
+  Text              TEXT        NOT NULL,
+  ExpireDate        INTEGER     NOT NULL    DEFAULT 0
+);
+
 --- INDEXES --------------------------------------------------------------------
 
 CREATE UNIQUE INDEX IF NOT EXISTS filename_index ON Files (Name);
@@ -91,7 +96,6 @@ CREATE TRIGGER IF NOT EXISTS set_lastbump AFTER INSERT ON Posts
 BEGIN
     UPDATE Posts SET LastBump = strftime('%s','now') WHERE ROWID = NEW.ROWID;
 END;
-
 
 CREATE TRIGGER IF NOT EXISTS bump_thread AFTER INSERT ON Posts
   WHEN NEW.Parent IS NOT NULL AND NEW.Email NOT LIKE '%sage%'
@@ -132,11 +136,23 @@ BEGIN
         AND LastBump = (SELECT MIN(LastBump) FROM Posts WHERE Board = NEW.Board AND Parent IS NULL);
 END;
 
+CREATE TRIGGER IF NOT EXISTS delete_cyclical BEFORE INSERT ON Posts
+  WHEN (SELECT Cycle FROM Posts WHERE Board = NEW.Board AND Number = NEW.Parent)
+  AND (SELECT ReplyCount FROM Posts WHERE Board = NEW.Board AND Number = NEW.Parent)
+      >= (SELECT PostLimit FROM Boards WHERE Name = NEW.Board)
+BEGIN
+  DELETE FROM Posts WHERE Board = NEW.Board AND Number = (SELECT MIN(Number) FROM Posts WHERE Parent = NEW.Parent);
+END;
+
 CREATE TRIGGER IF NOT EXISTS delete_child_posts BEFORE DELETE ON Posts WHEN OLD.Parent IS NULL
 BEGIN
   DELETE FROM Posts WHERE Board = OLD.Board AND Parent = OLD.Number;
 END;
 
+CREATE TRIGGER IF NOT EXISTS set_captcha_expiry AFTER INSERT ON Captchas
+BEGIN
+  UPDATE Captchas SET ExpireDate = strftime('%s', 'now','+15 minutes') WHERE ROWID = NEW.ROWID;
+END;
 
 -- END;
 
