@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Control.Monad
-import Control.Monad.Trans
 
 import qualified Network.Wai.Middleware.RequestLogger as Wai (logStdoutDev)
 import qualified Network.Wai.Middleware.Static as Wai 
@@ -9,28 +8,27 @@ import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 
 import Imageboard.Config (setupDirs)
-import Imageboard.Database
-import Imageboard.Pages 
+import Imageboard.Database (setupDb)
+import Imageboard.Pages
 import Imageboard.Actions
 import Imageboard.Utils
 
 -- | Run the server. Routing is defined here.
 main :: IO ()
 main = do
+    setupDirs
     setupDb
     S.scotty 3000 $ do
         S.middleware Wai.logStdoutDev
         S.middleware $ Wai.staticPolicy $ Wai.noDots <> Wai.addBase "static"
         -- Captcha
-        S.get   "/captcha.png" $ displayCaptcha
-        S.get   "/" $
-            blaze =<< liftIO (homePage <$> getBoardInfos)
-        S.get   "/recent" $
-            blaze =<< liftIO (recentView <$> getBoardNames <*> getPosts 100)
+        S.get   "/captcha.png"      displayCaptcha
+        S.get   "/"                 displayHomePage 
+        S.get   "/recent"           displayRecent
         -- Account actions
-        S.get   "/mod"              $ modPage
-        S.post  "/login"            $ tryLogin
-        S.post  "/logout"           $ logout
+        S.get   "/mod"              modPage
+        S.post  "/login"            tryLogin
+        S.post  "/logout"           logout
         S.get   "/changepass"       $ allowLoggedIn (blaze changePasswordPage)
         S.post  "/changepass"       $ allowLoggedIn changePass
         -- Admin actions

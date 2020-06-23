@@ -2,24 +2,28 @@
 module Imageboard.Actions.Display (
     displayCatalog,
     displayThread,
-    displayCaptcha
+    displayCaptcha,
+    displayRecent,
+    displayHomePage
 ) where
 import Control.Monad.Except
 import Graphics.Captcha (makeCaptcha)
 import qualified Data.ByteString.Lazy as BS
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
-import Imageboard.Pages (errorView, catalogView, threadView)
+import Imageboard.Pages (errorView, catalogView, threadView, homePage, recentView)
 import Imageboard.Utils
 import Imageboard.Database
 import Imageboard.Types (Board)
 
+-- | Create new captcha.
 displayCaptcha :: S.ActionM ()
 displayCaptcha = do
     (sol,cap) <- liftIO $ makeCaptcha
     liftIO $ insertCaptcha sol
     S.raw $ BS.fromStrict cap
 
+-- | Display all threads on board in catalog style.
 displayCatalog :: Board -> S.ActionM ()
 displayCatalog b = do
     liftIO $ liftM2 (,) <$> getBoardInfo b <*> getConstraints b
@@ -32,6 +36,7 @@ displayCatalog b = do
             threads <- liftIO $ getThreads b
             blaze $ catalogView i c bs threads
 
+-- | Display single thread with replies.
 displayThread :: Board -> Int -> S.ActionM ()
 displayThread b n = do
     liftIO $ liftM3 (,,) <$> getBoardInfo b <*> getConstraints b <*> getThread b n
@@ -42,3 +47,10 @@ displayThread b n = do
         \(i,c,t) -> do
             bs <- liftIO $ getBoardNames 
             blaze $ threadView i c bs t
+
+-- | Display 100 most recent posts.
+displayRecent :: S.ActionM ()
+displayRecent = blaze =<< liftIO (recentView <$> getBoardNames <*> getPosts 100)
+
+displayHomePage :: S.ActionM ()
+displayHomePage = blaze =<< liftIO (homePage <$> getBoardInfos)
