@@ -10,6 +10,7 @@ module Imageboard.Database (
     insertThreadWithFile,
     -- * Post and thread queries
     getPosts,
+    checkPost,
     getThread,
     checkThread,
     getThreads,
@@ -243,6 +244,15 @@ checkThread b n = runDb $ \c -> do
                     \(SELECT 1 FROM threads WHERE Number = :number AND Board = :board)" 
                     [":number" := n, ":board" := b] :: IO [DB.Only Bool]
     <&> any DB.fromOnly
+
+-- | Check if post with given number exists on given board.
+checkPost :: Board -> Int -> IO Bool
+checkPost b n = runDb $ \c -> do
+    DB.queryNamed c "SELECT EXISTS\
+                    \(SELECT 1 FROM Posts WHERE Number = :number AND Board = :board)" 
+                    [":number" := n, ":board" := b] :: IO [DB.Only Bool]
+    <&> any DB.fromOnly
+
 
 -- | Get thread information by board name and number. 
 getThreadInfo :: Board -> Int -> IO (Maybe ThreadInfo)

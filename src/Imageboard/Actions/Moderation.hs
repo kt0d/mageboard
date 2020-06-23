@@ -19,17 +19,17 @@ import Imageboard.Actions.Common
 import Imageboard.Database
 import Imageboard.Types (Board)
 
-checkIfPostExists :: Board -> Int -> Action
-checkIfPostExists b n = do
-    exist <- liftIO $ checkThread b n
+checkIfExists :: Board -> Int -> (Board -> Int -> IO Bool) -> Action
+checkIfExists b n check = do
+    exist <- liftIO $ check b n
     when (not exist) $ do
         S.status badRequest400
         blaze $ errorView "Post does not exist"
         S.finish
 
-doActionOnPost :: (Board -> Int -> IO ()) -> Board -> Int -> Action
-doActionOnPost action b n = do
-    checkIfPostExists b n
+doActionOnThread :: (Board -> Int -> IO ()) -> Board -> Int -> Action
+doActionOnThread action b n = do
+    checkIfExists b n checkThread
     liftIO $ action b n
     returnToThread b n
 
@@ -51,25 +51,25 @@ deleteFile f = do
 -- | Remove file from post.
 unlinkPostFile :: Board -> Int -> Action
 unlinkPostFile b n = do
-    checkIfPostExists b n
+    checkIfExists b n checkPost
     liftIO $ unlinkFile b n 
     blaze $ errorView "File unlinked from post"
 
 -- | Delete post.
 deletePost :: Board -> Int -> Action
 deletePost b n = do
-    checkIfPostExists b n
+    checkIfExists b n checkPost
     liftIO $ removePost b n
     blaze $ errorView "Post removed"
 
 toggleThreadSticky :: Board -> Int -> Action
-toggleThreadSticky = doActionOnPost toggleSticky
+toggleThreadSticky = doActionOnThread toggleSticky
 
 toggleThreadAutosage ::  Board -> Int -> Action
-toggleThreadAutosage = doActionOnPost toggleAutosage
+toggleThreadAutosage = doActionOnThread toggleAutosage
 
 toggleThreadLock ::  Board -> Int -> Action
-toggleThreadLock = doActionOnPost toggleLock 
+toggleThreadLock = doActionOnThread toggleLock 
 
 toggleThreadCycle ::  Board -> Int -> Action
-toggleThreadCycle = doActionOnPost toggleCycle 
+toggleThreadCycle = doActionOnThread toggleCycle 
