@@ -6,10 +6,17 @@ module Imageboard.Config (
     schemaFile,
     uploadDir,
     thumbnailDir,
-    timezone
+    timezone,
+    setupDirs
 ) where
 import Data.String (IsString)
 import Data.Time (TimeZone(..))
+import System.Directory (createDirectoryIfMissing)
+
+setupDirs :: IO ()
+setupDirs = do
+    createDirectoryIfMissing True uploadDir
+    createDirectoryIfMissing True thumbnailDir
 
 -- | Absolute path to main CSS file, with @static@ directory as root.
 cssFile :: IsString a => a

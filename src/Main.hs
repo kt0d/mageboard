@@ -8,6 +8,7 @@ import qualified Network.Wai.Middleware.Static as Wai
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 
+import Imageboard.Config (setupDirs)
 import Imageboard.Database
 import Imageboard.Pages 
 import Imageboard.Actions
