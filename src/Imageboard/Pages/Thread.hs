@@ -42,8 +42,8 @@ fileBox f@(File{..}) = do
         foldMap dimFormat dim
     case ext of
         e | isAudio e -> showAudio
-        EPUB -> showFallback "epub.png"
-        SWF -> showFallback "swf.png"
+        EPUB -> showFallback "/epub.png"
+        SWF -> showFallback "/swf.png"
         _ -> showThumb
     where
         dimFormat :: Dimensions -> H.Html
