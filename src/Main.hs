@@ -11,7 +11,6 @@ import Imageboard.Config (setupDirs)
 import Imageboard.Database (setupDb)
 import Imageboard.Pages
 import Imageboard.Actions
-import Imageboard.Utils
 
 -- | Run the server. Routing is defined here.
 main :: IO ()

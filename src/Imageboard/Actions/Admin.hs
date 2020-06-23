@@ -10,11 +10,11 @@ import qualified Data.Password.Bcrypt as P
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (created201, badRequest400)
 import Imageboard.Pages (errorView, boardModifyPage)
-import Imageboard.Utils
+import Imageboard.Actions.Common
 import Imageboard.Database
 import Imageboard.Types (Role(..), Board, BoardInfo(..), BoardConstraints(..))
 
-loadBoardFormThen :: (BoardInfo -> BoardConstraints -> S.ActionM ()) -> S.ActionM ()
+loadBoardFormThen :: (BoardInfo -> BoardConstraints -> Action) -> Action
 loadBoardFormThen action = do
     info <- (liftM3 BoardInfo)   <$> maybeParam "name"   
                         <*> maybeParam "title"
@@ -30,7 +30,7 @@ loadBoardFormThen action = do
         _ ->  do
             blaze $ errorView "Insufficient params"
 
-modifyBoard :: S.ActionM ()
+modifyBoard :: Action
 modifyBoard = do
     maybeParam "board"
     >>= maybe 
@@ -40,7 +40,7 @@ modifyBoard = do
             S.redirect "/mod"
         )
         
-createBoard :: S.ActionM ()
+createBoard :: Action
 createBoard = do
     loadBoardFormThen $ \bi bc -> do
         liftIO $ insertBoard bi bc
@@ -48,7 +48,7 @@ createBoard = do
         S.redirect "/mod"
 
 -- | Send form for modyfing existing board. 
-prepareBoardEdit :: Board -> S.ActionM ()
+prepareBoardEdit :: Board -> Action
 prepareBoardEdit b = do
     info <- liftIO $ getBoardInfo b
     cs <- liftIO $ getConstraints b
@@ -58,7 +58,7 @@ prepareBoardEdit b = do
             S.status badRequest400
             blaze $ errorView "Board does not exist"
 
-createAccount :: S.ActionM ()
+createAccount :: Action
 createAccount = do
     pass <- P.mkPassword <$> S.param "password"
     user <- S.param "username"

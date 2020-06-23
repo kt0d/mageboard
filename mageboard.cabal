@@ -23,7 +23,7 @@ executable mageboard
     Imageboard.Actions.Posting
     Imageboard.Actions.Moderation
     Imageboard.Actions
-    Imageboard.Utils
+    Imageboard.Actions.Common
     Imageboard.Pages
     Imageboard.Pages.Common
     Imageboard.Pages.Thread

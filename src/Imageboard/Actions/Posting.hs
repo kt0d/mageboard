@@ -16,7 +16,7 @@ import Imageboard.Database
 import Imageboard.Types
 import Imageboard.Pages (errorView)
 import Imageboard.FileUpload
-import Imageboard.Utils
+import Imageboard.Actions.Common
 
 tryMkStub :: BoardConstraints -> Bool -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text 
     -> Either Text PostStub
@@ -87,7 +87,7 @@ validateCaptcha captcha = do
 
 -- | This action will try to insert post sent by the user.
 -- In case of failure it will send user appropriate error page.
-createPost :: Board -> Int -> S.ActionM ()
+createPost :: Board -> Int -> Action
 createPost b p = do 
     captcha <- S.param "captcha"
     postFile <- maybeFile
@@ -108,7 +108,7 @@ createPost b p = do
 
 -- | This action will try to insert new thread sent by the user.
 -- In case of failure it will send user appropriate error page.
-createThread :: Board -> S.ActionM ()
+createThread :: Board -> Action
 createThread b = do
     postFile <- maybeFile
     captcha <- S.param "captcha"

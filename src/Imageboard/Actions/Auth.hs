@@ -17,23 +17,23 @@ import Network.HTTP.Types.Status (unauthorized401)
 import qualified Data.Password.Bcrypt as P
 import Crypto.Random (getRandomBytes)
 import Imageboard.Pages (errorView, loginView, loggedInPage, adminLoggedInPage)
-import Imageboard.Utils
+import Imageboard.Actions.Common
 import Imageboard.Database
 import Imageboard.Types (AccountInfo(..),SessionKey, Role(..))
 
-setSessionCookie :: SessionKey -> S.ActionM ()
+setSessionCookie :: SessionKey -> Action
 setSessionCookie st = SC.setSimpleCookie "session-token" $ st <> "; SameSite=Strict; Max-Age=3600"
 
 randomToken :: IO SessionKey
 randomToken = TE.decodeUtf8 <$> Base64.encode <$> getRandomBytes 72
 
-disallow :: Text -> S.ActionM ()
+disallow :: Text -> Action
 disallow msg = do
     S.status unauthorized401
     SC.deleteCookie "session-token"
     blaze $ errorView msg
 
-allowByRole :: (Role -> Bool) -> S.ActionM () -> S.ActionM ()
+allowByRole :: (Role -> Bool) -> Action -> Action
 allowByRole f action = do
     key <- SC.getCookie "session-token"
     runExceptT $ do
@@ -48,16 +48,16 @@ allowByRole f action = do
         (const action)
 
 -- | Allow any logged in user to perform an action.
-allowLoggedIn :: S.ActionM () -> S.ActionM ()
+allowLoggedIn :: Action -> Action
 allowLoggedIn = allowByRole (const True)
 
 -- | Allow admin user to perform an action.
-allowAdmin :: S.ActionM () -> S.ActionM ()
+allowAdmin :: Action -> Action
 allowAdmin = allowByRole (==Admin)
 
 -- | If user is logged in, render his account page. 
 -- Otherwise render login form.
-modPage :: S.ActionM ()
+modPage :: Action
 modPage = do
     key <- SC.getCookie "session-token"
     case key of
@@ -77,7 +77,7 @@ modPage = do
             >>= either disallow (const S.finish)
 
 -- | Try to log in a user with supplied data from login form.
-tryLogin :: S.ActionM ()
+tryLogin :: Action
 tryLogin = do
     user <- S.param "username"
     pass <- P.mkPassword <$> S.param "password"
@@ -93,7 +93,7 @@ tryLogin = do
         Nothing -> disallow "Wrong username"
 
 -- | Log out a user.
-logout :: S.ActionM ()
+logout :: Action
 logout = do
     key <- SC.getCookie "session-token"
     SC.deleteCookie "session-token"
@@ -104,7 +104,7 @@ logout = do
             S.redirect "/"
         
 -- | Try to change password of a user.
-changePass :: S.ActionM ()
+changePass :: Action
 changePass = do
     key <- SC.getCookie "session-token"
     old <- P.mkPassword <$> S.param "old-password"

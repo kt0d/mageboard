@@ -12,19 +12,19 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (notFound404)
 import Imageboard.Pages (errorView, catalogView, threadView, homePage, recentView)
-import Imageboard.Utils
+import Imageboard.Actions.Common
 import Imageboard.Database
 import Imageboard.Types (Board)
 
 -- | Create new captcha.
-displayCaptcha :: S.ActionM ()
+displayCaptcha :: Action
 displayCaptcha = do
     (sol,cap) <- liftIO $ makeCaptcha
     liftIO $ insertCaptcha sol
     S.raw $ BS.fromStrict cap
 
 -- | Display all threads on board in catalog style.
-displayCatalog :: Board -> S.ActionM ()
+displayCatalog :: Board -> Action
 displayCatalog b = do
     liftIO $ liftM2 (,) <$> getBoardInfo b <*> getConstraints b
     >>= maybe
@@ -37,7 +37,7 @@ displayCatalog b = do
             blaze $ catalogView i c bs threads
 
 -- | Display single thread with replies.
-displayThread :: Board -> Int -> S.ActionM ()
+displayThread :: Board -> Int -> Action
 displayThread b n = do
     liftIO $ liftM3 (,,) <$> getBoardInfo b <*> getConstraints b <*> getThread b n
     >>= maybe
@@ -49,8 +49,8 @@ displayThread b n = do
             blaze $ threadView i c bs t
 
 -- | Display 100 most recent posts.
-displayRecent :: S.ActionM ()
+displayRecent :: Action
 displayRecent = blaze =<< liftIO (recentView <$> getBoardNames <*> getPosts 100)
 
-displayHomePage :: S.ActionM ()
+displayHomePage :: Action
 displayHomePage = blaze =<< liftIO (homePage <$> getBoardInfos)

@@ -15,11 +15,11 @@ import Data.Text (Text)
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (badRequest400)
 import Imageboard.Pages (errorView)
-import Imageboard.Utils
+import Imageboard.Actions.Common
 import Imageboard.Database
 import Imageboard.Types (Board)
 
-checkIfPostExists :: Board -> Int -> S.ActionM ()
+checkIfPostExists :: Board -> Int -> Action
 checkIfPostExists b n = do
     exist <- liftIO $ checkThread b n
     when (not exist) $ do
@@ -27,17 +27,17 @@ checkIfPostExists b n = do
         blaze $ errorView "Post does not exist"
         S.finish
 
-doActionOnPost :: (Board -> Int -> IO ()) -> Board -> Int -> S.ActionM ()
+doActionOnPost :: (Board -> Int -> IO ()) -> Board -> Int -> Action
 doActionOnPost action b n = do
     checkIfPostExists b n
     liftIO $ action b n
     returnToThread b n
 
-returnToThread :: Board -> Int -> S.ActionM ()
+returnToThread :: Board -> Int -> Action
 returnToThread b n = S.redirect $ "/" <> Lazy.fromStrict b <> "/" <> (Lazy.pack $ show n)
 
 -- | Delete file.
-deleteFile :: Text -> S.ActionM ()
+deleteFile :: Text -> Action
 deleteFile f = do
     fileId <- liftIO $ getFileId f
     case fileId of
@@ -49,27 +49,27 @@ deleteFile f = do
             blaze $ errorView "File removed"
 
 -- | Remove file from post.
-unlinkPostFile :: Board -> Int -> S.ActionM ()
+unlinkPostFile :: Board -> Int -> Action
 unlinkPostFile b n = do
     checkIfPostExists b n
     liftIO $ unlinkFile b n 
     blaze $ errorView "File unlinked from post"
 
 -- | Delete post.
-deletePost :: Board -> Int -> S.ActionM ()
+deletePost :: Board -> Int -> Action
 deletePost b n = do
     checkIfPostExists b n
     liftIO $ removePost b n
     blaze $ errorView "Post removed"
 
-toggleThreadSticky :: Board -> Int -> S.ActionM ()
+toggleThreadSticky :: Board -> Int -> Action
 toggleThreadSticky = doActionOnPost toggleSticky
 
-toggleThreadAutosage ::  Board -> Int -> S.ActionM ()
+toggleThreadAutosage ::  Board -> Int -> Action
 toggleThreadAutosage = doActionOnPost toggleAutosage
 
-toggleThreadLock ::  Board -> Int -> S.ActionM ()
+toggleThreadLock ::  Board -> Int -> Action
 toggleThreadLock = doActionOnPost toggleLock 
 
-toggleThreadCycle ::  Board -> Int -> S.ActionM ()
+toggleThreadCycle ::  Board -> Int -> Action
 toggleThreadCycle = doActionOnPost toggleCycle 

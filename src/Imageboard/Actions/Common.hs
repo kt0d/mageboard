@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-partial-type-signatures #-}
 {-# LANGUAGE OverloadedStrings, RecordWildCards, PartialTypeSignatures #-}
-module Imageboard.Utils (
+module Imageboard.Actions.Common (
+    Action,
     blaze,
     maybeParam,
     maybeFile,
     checkBoxParam,
-    maybetoExcept,
-    FileData
+    maybetoExcept
 ) where
 import Control.Monad.Except
 import Data.Maybe
@@ -17,12 +17,12 @@ import qualified Network.Wai.Parse as N (FileInfo(..))
 import qualified Web.Scotty as S
 import Text.Blaze.Html5 (Html)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
+import Imageboard.FileUpload (FileData)
 
--- | Type representing file as received by HTTP server.
-type FileData = N.FileInfo B.ByteString
+type Action = S.ActionM ()
 
 -- | Send HTML created with blaze-html combinators. 
-blaze :: Html -> S.ActionM ()
+blaze :: Html -> Action
 blaze = S.html . renderHtml  
   
 -- | Maybe get a parameter as in 'Web.Scotty.param', return Nothing 

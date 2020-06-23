@@ -16,8 +16,10 @@ import Crypto.Hash.Algorithms (SHA512)
 import qualified System.Process as P
 import System.Exit (ExitCode(..))
 import Imageboard.Types (File(..), FileType(..), Dimensions(..))
-import Imageboard.Utils
 import qualified Imageboard.Config as Config
+
+-- | Type representing file as received by HTTP server.
+type FileData = N.FileInfo B.ByteString
 
 hashFile :: ByteString -> H.Digest SHA512
 hashFile = H.hashlazy
