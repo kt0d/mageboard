@@ -74,7 +74,7 @@ modPage = do
                     _ -> do
                         bs <- liftIO $ getBoardNames 
                         lift $ blaze $ loggedInPage acc bs
-            >>= either (blaze .errorView) (const S.finish)
+            >>= either disallow (const S.finish)
 
 -- | Try to log in a user with supplied data from login form.
 tryLogin :: S.ActionM ()
