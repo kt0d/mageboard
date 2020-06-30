@@ -1,5 +1,7 @@
 A simple anonymous javascriptless imageboard written in Haskell, with SQLite3 as the backend.
 
+[Haddock-generated documentation](https://kt0d.github.io/mageboard/)
+
 ## Features
 * Boards with catalog
 * *Recent posts* page
