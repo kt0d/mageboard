@@ -35,4 +35,4 @@ doMarkup = gsub [
   REReplace "==(.+?)=="                               "<span class=\"redtext\">$1</span>",
   REReplace "\\*\\*(.+?)\\*\\*"                       "<span class=\"spoiler\">$1</span>",
   REReplace "(?s-m)\\`\\`\\`(.+?)\\`\\`\\`"           "<code>$1</code>",
-  REReplace "(https?|ftp)://[^\\s/$.?#].[^\\s]*"      "<a href=\"$0\">$0</a>"]
+  REReplace "(https?|ftp)://[^\\s/$.?#].[^\\s]*"      "<a href=\"$0\" rel=\"noreferrer\">$0</a>"]
