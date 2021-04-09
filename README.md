@@ -48,6 +48,7 @@ A simple anonymous javascriptless imageboard written in Haskell, with SQLite3 as
 * Performance improvements:
   * One DB connection per request
 * Replace hs-captcha
+* Add default user name and maximum file size to board configuration
 
 ## Build
 
