@@ -8,7 +8,10 @@ PCRE2 bindings for Data.Text.
 |-}
 module Regex.PCRE2 (
     RegexReplace(..),
-    gsub
+    gsub,
+    gsubWith,
+    gsubWithM,
+    getAllMatches
 ) where
 import Control.Monad
 import Foreign (Word32, Word16, (.|.), 
@@ -22,7 +25,6 @@ import qualified Data.Text.Foreign as TF
 import System.IO.Unsafe (unsafePerformIO)
 import Debug.Trace
 import qualified Data.Array as A
-import System.Environment
 import Data.Functor.Identity
 
 data Code -- PCRE2_CODE
@@ -172,8 +174,10 @@ unsafeToText t' len = do
 gsub :: [RegexReplace] -> Text -> Text
 gsub ps = unsafePerformIO . substitute ps
 
-ovectorToArray :: Text -> Ptr CSize -> Word32 -> IO ((CSize,CSize), A.Array Int Text)
-ovectorToArray subject ovPtr ovCount = do
+ovectorToArray :: Text -> Ptr MatchData -> IO ((CSize,CSize), A.Array Int Text)
+ovectorToArray subject matchData = do
+    ovCount <- c_pcre2_get_ovector_count matchData
+    ovPtr <- c_pcre2_get_ovector_pointer matchData
     ovector <- toPairs <$> peekArray (2 * fromIntegral ovCount) ovPtr
     let ovArr = A.listArray (0,fromIntegral ovCount - 1) $ map (flip sliceWord16 subject) ovector
     return (head ovector, ovArr)
@@ -190,7 +194,7 @@ replaceWith s p fun = do
     (s', sLen) <- unsafeToPtr s
     regex <- compilePattern p
     matchData <- c_pcre2_match_data_create_from_pattern regex nullPtr
-    let replaceWithInternal (sofar::m Text,startOffset::CSize) = do
+    let loop (sofar::m Text,startOffset::CSize) = do
             ret <- c_pcre2_match regex
                 s' (fromIntegral sLen)
                 startOffset 0
@@ -198,18 +202,16 @@ replaceWith s p fun = do
             if ret == c_PCRE2_ERROR_NOMATCH
             then let newSofar = do
                         t <- sofar
-                        return $ t <> sliceWord16 (startOffset,fromIntegral sLen) s
+                        return $ t <> TF.dropWord16 (fromIntegral startOffset) s
                  in return (newSofar,0)
             else do
-                ovCount <- c_pcre2_get_ovector_count matchData
-                ovPtr <- c_pcre2_get_ovector_pointer matchData
-                ((matchOffset,afterMatch),ovArr) <- ovectorToArray s ovPtr ovCount
+                ((matchOffset,afterMatch),ovArr) <- ovectorToArray s matchData
                 let newSofar = do
                         t <- sofar
                         replac <- fun (ovArr A.!)
                         return $ t <> sliceWord16 (startOffset,matchOffset) s <> replac
-                replaceWithInternal (newSofar,afterMatch)
-    (output,_::CSize) <- replaceWithInternal (return T.empty,0)
+                loop (newSofar,afterMatch)
+    (output,_::CSize) <- loop (return T.empty,0)
     free s'
     c_pcre2_code_free regex
     c_pcre2_match_data_free matchData
@@ -232,3 +234,29 @@ gsubWith s p f = runIdentity $ unsafePerformIO $ replaceWith s p (return . f)
 {-# NOINLINE gsubWithM #-}
 gsubWithM :: Monad m => Text -> Text -> ((Int -> Text) -> m Text) -> m Text
 gsubWithM s p f = unsafePerformIO $ replaceWith s p f
+
+collectMaches :: Monoid a => Text -> Text -> ((Int -> Text) -> a)  -> IO a
+collectMaches s p fun = do
+    (s', sLen) <- unsafeToPtr s
+    regex <- compilePattern p
+    matchData <- c_pcre2_match_data_create_from_pattern regex nullPtr
+    let loop (sofar::a,startOffset::CSize) = do
+            ret <- c_pcre2_match regex
+                s' (fromIntegral sLen)
+                startOffset 0
+                matchData nullPtr
+            if ret == c_PCRE2_ERROR_NOMATCH
+            then return (sofar,0)
+            else do
+                ((_,afterMatch),ovArr) <- ovectorToArray s matchData
+                let newSofar = sofar <> fun (ovArr A.!)
+                loop (newSofar,afterMatch)
+    (output,_::CSize) <- loop (mempty,0)
+    free s'
+    c_pcre2_code_free regex
+    c_pcre2_match_data_free matchData
+    return output
+
+{-# NOINLINE getAllMatches #-}
+getAllMatches :: Text -> Text -> ((Int -> Text) -> a) -> [a]
+getAllMatches s p fun = unsafePerformIO $ collectMaches s p (pure . fun)

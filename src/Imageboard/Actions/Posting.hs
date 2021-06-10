@@ -8,6 +8,7 @@ import Data.Maybe
 import Data.String (IsString)
 import Data.Foldable (fold)
 import Data.Text (Text)
+import Data.Text.Read (decimal)
 import qualified Data.Text.Lazy as Lazy
 import qualified Data.Text as T
 import qualified Web.Scotty as S
@@ -17,6 +18,7 @@ import Imageboard.Types
 import Imageboard.Pages (errorView)
 import Imageboard.FileUpload
 import Imageboard.Actions.Common
+import Regex.PCRE2 (getAllMatches)
 
 tryMkStub :: BoardConstraints -> Bool -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text 
     -> Either Text PostStub
@@ -56,22 +58,33 @@ canReply ThreadInfo{..} Constraints{..}
     | (not $ cycle_ flags) && (replyCount == maxReplies) = Left "Thread reached maximum number of replies"
     | otherwise = Right ()
 
+collectRefs :: Board -> Text -> [(Board,Int)]
+collectRefs b text = localRefs ++ crossboardRefs
+    where
+        toNum t = case decimal t of Right (n,_) -> n
+        localRefs = map (\refN -> (b,refN)) $ 
+            getAllMatches text ">>([0-9]+)" (\f -> toNum $ f 1)
+        crossboardRefs =
+            getAllMatches text ">>>/([a-zA-Z]+)/([0-9]+)" (\f -> (f 1, toNum $ f 2))
+
 tryInsertThread :: MonadIO m => Board -> PostStub -> Maybe FileData -> ExceptT Text m ()
-tryInsertThread b stub = maybe
-    do liftIO $ insertThread b stub 
-    \fdata -> do
-        fileId <- tryInsertFile fdata
-        liftIO $ insertThreadWithFile b stub fileId
-    
+tryInsertThread b stub file = maybe
+        do liftIO $ insertThread b stub
+        (\fdata -> do
+            fileId <- tryInsertFile fdata
+            liftIO $ insertThreadWithFile b stub fileId)
+        file
+    >>= \i -> liftIO $ insertRefs b i i $ collectRefs b (text stub)
 
 tryInsertPost :: MonadIO m => Board -> Int -> PostStub -> Maybe FileData -> ExceptT Text m ()
-tryInsertPost b p stub = maybe
-    do liftIO $ insertPost b p stub 
-    \fdata -> do
-        fileId <- tryInsertFile fdata
-        liftIO $ insertPostWithFile b p stub fileId
-        
-
+tryInsertPost b p stub file = maybe
+        do liftIO $ insertPost b p stub
+        (\fdata -> do
+            fileId <- tryInsertFile fdata
+            liftIO $ insertPostWithFile b p stub fileId)
+        file
+    >>= \i -> liftIO $ insertRefs b p i $ collectRefs b (text stub)
+      
 validatePost :: BoardConstraints -> Bool -> S.ActionM (Either Text PostStub)
 validatePost cstr hasFile = do
     tryMkStub cstr hasFile

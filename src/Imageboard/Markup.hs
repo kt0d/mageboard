@@ -1,12 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 module Imageboard.Markup (
-    formatPost,
-    escapeHTML
+    formatStub,
+    formatStubWithRefs
 ) where
+import Imageboard.Types (Board, RefMap, PostStub(..))
+import qualified Data.Map.Strict as M
 import Data.Text (Text)
+import Data.Text.Read (decimal)
 import qualified Data.Text as T
-import Regex.PCRE2(gsub, RegexReplace(..))
+import Regex.PCRE2(gsub, RegexReplace(..), gsubWith)
 
 -- | Escape XML entities in a text value.
 escapeHTML :: Text -> Text
@@ -20,12 +23,50 @@ escapeHTML = T.foldr escape mempty
     escape x    = (<>) $ T.singleton x
 
 -- | Escape HTML and apply formatting to given text.
-formatPost :: Text -> Text
-formatPost = doMarkup .  escapeHTML
+formatStub :: PostStub -> PostStub
+formatStub (Stub a e s t) = Stub a e s $ (if e == "nofo" then id else doMarkup) $ escapeHTML t
+
+-- | Escape HTML and apply formatting to given text, add reference links.
+formatStubWithRefs :: Board -> RefMap -> PostStub -> PostStub
+formatStubWithRefs b refs (Stub a e s t) = Stub a e s newText where
+  newText = if e == "nofo" 
+    then escapeHTML t
+    else doRefs b refs $ doMarkup $ escapeHTML t
+
+doRefs :: Board -> RefMap -> Text -> Text
+doRefs b refs t = crossMatched where
+  localMatched = gsubWith t "&gt;&gt;(\\d+)" $ doLocal
+  crossMatched = gsubWith localMatched "&gt;&gt;&gt;/(\\w+)/(\\d+)" doCrossBoard
+
+  toNum :: Text -> Int
+  toNum x = case decimal x of Right (n,_) -> n
+
+  formatLink :: Text -> Text -> Text -> Text -> Text
+  formatLink board parent postid innertext = "<a href=\"/" <> board <> "/" <> parent <> "#postid" <> postid <> "\">" <> innertext <> "</a>"
+
+  formatNoLink :: Text -> Text
+  formatNoLink innertext = "<s>" <> innertext <> "</s>"
+
+  doLocal :: (Int -> Text) -> Text
+  doLocal matches = case refs M.!? (b,toNum refnum) of
+    Nothing -> formatNoLink reftext
+    Just p -> formatLink b (T.pack $ show p) refnum reftext
+    where
+      refnum = matches 1
+      reftext = matches 0
+
+  doCrossBoard :: (Int -> Text) -> Text
+  doCrossBoard matches = case refs M.!? (refboard,toNum refnum) of
+    Nothing -> formatNoLink reftext
+    Just p -> formatLink refboard (T.pack $ show p) refnum reftext
+    where
+      reftext = matches 0
+      refboard = matches 1
+      refnum = matches 2
 
 doMarkup :: Text -> Text
 doMarkup = gsub [
-  REReplace "&gt;&gt;(\\d+)"                          "<a href=\"#postid$1\">$0</a>",
+  --REReplace "&gt;&gt;(\\d+)"                          "<a href=\"#postid$1\">$0</a>",
   REReplace "'''(.+?)'''"                             "<b>$1</b>",
   REReplace "''(.+?)''"                               "<i>$1</i>",
   REReplace "__(.+?)__"                               "<u>$1</u>",

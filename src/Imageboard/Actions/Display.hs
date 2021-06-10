@@ -14,7 +14,8 @@ import Network.HTTP.Types.Status (notFound404)
 import Imageboard.Pages (errorView, catalogView, threadView, homePage, recentView)
 import Imageboard.Actions.Common
 import Imageboard.Database
-import Imageboard.Types (Board)
+import Imageboard.Types (Board,RefMap,BackRefMap)
+import qualified Data.Map.Strict as M
 
 -- | Create new captcha.
 displayCaptcha :: Action
@@ -36,6 +37,17 @@ displayCatalog b = do
             threads <- liftIO $ getThreads b
             blaze $ catalogView i c bs threads
 
+produceRefs :: [(Board,Int,Int)] 
+    -> RefMap -- ^ Map from (RefBoard,RefNumber) to RefParent
+produceRefs = M.fromList . map (\(b,p,n) -> ((b,n),p))
+
+-- | Produces back references (only inside a thread)
+produceBackRefs :: Board -- ^ Board name
+    -> Int -- ^ Thread number
+    -> [(Int,Board,Int,Int)] -- ^ List of (Number,RefBoard,RefParent,RefNumber)
+    -> BackRefMap -- ^ Map from RefNumber to Number
+produceBackRefs b p = M.fromListWith (++) . map (\(n,_,_,rn) -> (rn,[n])) . filter (\(_,rb,rp,_) -> rb == b && rp == p)
+
 -- | Display single thread with replies.
 displayThread :: Board -> Int -> Action
 displayThread b n = do
@@ -45,8 +57,11 @@ displayThread b n = do
             S.status notFound404
             blaze $ errorView "Thread does not exist"
         \(i,c,t) -> do
+            refList <- liftIO $ getThreadRefs b n
+            let refMap = produceRefs $ map (\(_,x,y,z) -> (x,y,z)) refList
+            let backRefMap = produceBackRefs b n refList
             bs <- liftIO $ getBoardNames 
-            blaze $ threadView i c bs t
+            blaze $ threadView i c bs t refMap
 
 -- | Display 100 most recent posts.
 displayRecent :: Action

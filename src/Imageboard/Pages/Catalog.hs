@@ -37,14 +37,16 @@ catalogThread ThreadHead{..} = H.div ! A.class_ "catalog-thread" $ do
     where
         threadLink = "/" <> (H.toValue $ board $ loc opPost) <> "/" <> (H.toValue $ number $ loc opPost)
         threadDate = formatDate $ lastBump opInfo
-        postEmail = email $ content opPost
         postSubject = subject $ content opPost
-        postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text $ content opPost
+        postText = text $ content opPost
 
 -- | Render list of all threads on a board.
 catalogView :: BoardInfo -> BoardConstraints -> [Board] -> [ThreadHead] -> H.Html
-catalogView BoardInfo{..} Constraints{..} bs ts = 
-    let header = "/" <> name <> "/ - " <> title in
+catalogView BoardInfo{..} Constraints{..} bs ts =
+    let format p = p{content = formatStub (content p)}
+        ts' = map (\th -> th{opPost = format (opPost th)}) ts
+        header = "/" <> name <> "/ - " <> title 
+        in
     commonHtml (header <> " - catalog") bs $ do
         H.h1 $ H.toHtml $ header
         if isLocked
@@ -55,4 +57,4 @@ catalogView BoardInfo{..} Constraints{..} bs ts =
                 threadForm name
         addTopBottom $ H.div ! A.class_ "content" $
             H.div ! A.class_ "catalog-container" $
-            mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts
+            mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ catalogThread <$> ts'

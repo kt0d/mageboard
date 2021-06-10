@@ -86,7 +86,7 @@ basePostView Post{..} afterNumber = H.div ! A.class_ "post-container" ! A.id pos
         postAuthor = author content
         postEmail = email content
         postSubject = subject content
-        postText = (if postEmail == "nofo" then escapeHTML else formatPost) $ text content
+        postText = text content
 
 postModLinks :: Post -> H.Html
 postModLinks Post{..} = do
@@ -123,8 +123,11 @@ postView p = basePostView p $
     H.span ! A.class_ "mod-links" $ postModLinks p
 
 -- | A view that renders whole thread.
-threadView :: BoardInfo -> BoardConstraints -> [Board] -> Thread -> H.Html
-threadView BoardInfo{..} Constraints{..} bs Thread{..} = commonHtml (threadTitle op) bs $ do 
+threadView :: BoardInfo -> BoardConstraints -> [Board] -> Thread -> RefMap -> H.Html
+threadView BoardInfo{..} Constraints{..} bs Thread{..} refs = commonHtml (threadTitle op) bs $ do 
+    let format p = p{content = formatStubWithRefs name refs (content p)}
+    let replies' = map format replies
+    let op' = op{opPost = format (opPost op)}
     if isLocked
         then H.h3 "Board is locked."
         else if lock $ flags $ opInfo $ op 
@@ -134,6 +137,6 @@ threadView BoardInfo{..} Constraints{..} bs Thread{..} = commonHtml (threadTitle
                 H.hr ! A.class_ "invisible"
                 case loc $ opPost op of (PostLocation b n _) -> replyForm b n
     addTopBottom $ H.div ! A.class_ "content" $ do
-        opPostView op
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> replies
+        opPostView op'
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ postView <$> replies'
     where threadTitle (ThreadHead Post{..} _) = "/" <> board loc <> "/" <> (T.pack $ show $ number loc)

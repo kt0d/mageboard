@@ -77,8 +77,20 @@ CREATE TABLE IF NOT EXISTS Sessions (
 );
 
 CREATE TABLE IF NOT EXISTS Captchas (
-  Text              TEXT        NOT NULL,
-  ExpireDate        INTEGER     NOT NULL    DEFAULT 0
+    Text             TEXT        NOT NULL,
+    ExpireDate       INTEGER     NOT NULL    DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS Refs (
+    Board           TEXT        NOT NULL,
+    Number          INTEGER     NOT NULL,
+    Parent          INTEGER     NOT NULL,
+    RefBoard        TEXT        NOT NULL,
+    RefNumber       INTEGER     NOT NULL,
+    RefParent       INTEGER     NOT NULL,
+
+    FOREIGN KEY (Board,Number) REFERENCES Posts (Board,Number) ON DELETE CASCADE,
+    FOREIGN KEY (RefBoard,RefNumber) REFERENCES Posts (Board,Number) ON DELETE CASCADE
 );
 
 --- INDEXES --------------------------------------------------------------------

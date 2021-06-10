@@ -12,10 +12,13 @@ module Imageboard.Types (
     PostLocation(..),
     Board, BoardInfo(..), BoardConstraints(..),
     Username, AccountInfo(..), Role(..),
-    SessionKey
+    SessionKey,
+    RefMap,
+    BackRefMap
 ) where
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import qualified Data.Map.Strict as M
 
 -- | Data type representing supported file formats.
 data FileType = JPG | PNG | GIF | WEBM | MP4 | MP3 | OGG | PDF | EPUB | SWF 
@@ -148,3 +151,6 @@ data Thread = Thread {
         op :: ThreadHead
     ,   replies :: [Post]
 } deriving (Show)
+
+type RefMap = M.Map (Board,Int) Int
+type BackRefMap = M.Map Int [Int]

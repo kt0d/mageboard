@@ -9,6 +9,7 @@ import Text.Blaze.Html5((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Imageboard.Types
+import Imageboard.Markup
 import Imageboard.Pages.Common
 import Imageboard.Pages.Thread (postView)
 
@@ -25,5 +26,7 @@ recentPostView p = do
 -- | A view for recent posts.
 recentView :: [Board] -> [Post] -> H.Html
 recentView bs ps = commonHtml "Recent posts" bs $ do 
+    let format p = p{content = formatStub (content p)}
+    let ps' = map format ps
     addTopBottom $ H.div ! A.class_ "content" $
-        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ map recentPostView ps
+        mconcat $ List.intersperse (H.hr ! A.class_ "invisible") $ map recentPostView ps'

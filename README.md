@@ -40,15 +40,16 @@ A simple anonymous javascriptless imageboard written in Haskell, with SQLite3 as
 * [Alternate CSS stylesheet](https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets)
 
 ### Missing features / TODO
-* Cross-thread and cross-board linking (>> and >>>)
+* Posts backreferences
+* Overboard
 * Logging of moderation actions
 * Moving thread between boards
 * Ability for moderators to sign their posts
 * File-based configuration
-* Performance improvements:
-  * One DB connection per request
+* Performance improvements
 * Replace hs-captcha
 * Add default user name and maximum file size to board configuration
+* Tripcodes
 
 ## Build
 

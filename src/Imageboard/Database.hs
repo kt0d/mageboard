@@ -44,7 +44,11 @@ module Imageboard.Database (
     toggleCycle,
     -- * Captcha
     insertCaptcha,
-    checkCaptcha
+    checkCaptcha,
+    -- * References
+    insertRefs,
+    getThreadRefs,
+    getBoardRefs
 ) where
 import Control.Monad (liftM2, liftM4)
 import Data.Text (Text)
@@ -157,9 +161,14 @@ insertFile f = runDb $ \c -> do
                         , ":height" := height <$> dim f]
     fromIntegral <$> DB.lastInsertRowId c
 
+-- only use after inserting into Posts
+insertedPostId :: DB.Connection -> IO Int
+insertedPostId c = DB.fromOnly . head <$>
+    DB.query_ c "SELECT Number FROM Posts WHERE rowid = last_insert_rowid()"
+
 -- | Insert post with no file attached into database.
-insertPost :: Board -> Int -> PostStub -> IO () 
-insertPost b p s = runDb $ \c -> DB.withTransaction c $
+insertPost :: Board -> Int -> PostStub -> IO Int
+insertPost b p s = runDb $ \c -> DB.withTransaction c $ do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Parent, Board) \
                         \VALUES (:name, :email, :subject, :text, :parent, :board)" 
                         [ ":name"       := author s
@@ -168,11 +177,12 @@ insertPost b p s = runDb $ \c -> DB.withTransaction c $
                         , ":text"       := text s
                         , ":parent"     := p
                         , ":board"      := b]
+    insertedPostId c
 
 -- | Insert post with file attached, using previously obtained file Id.
 insertPostWithFile :: Board -> Int -> PostStub -> Int -- ^ fileId 
-                    -> IO () -- ^ Post Id.
-insertPostWithFile b p s f = runDb $ \c -> DB.withTransaction c $
+                    -> IO Int -- ^ Post Id.
+insertPostWithFile b p s f = runDb $ \c -> DB.withTransaction c $ do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Parent, Board) \
                         \VALUES (:name, :email, :subject, :text, :fileid, :parent, :board)" 
                         [ ":name"       := author s
@@ -182,9 +192,10 @@ insertPostWithFile b p s f = runDb $ \c -> DB.withTransaction c $
                         , ":fileid"     := f
                         , ":parent"     := p
                         , ":board"      := b]
+    insertedPostId c
 
 -- | Insert new thread with no file attached.
-insertThread :: Board -> PostStub -> IO ()
+insertThread :: Board -> PostStub -> IO Int
 insertThread b s = runDb $ \c -> DB.withTransaction c $ do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, Board, \
                         \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
@@ -195,10 +206,11 @@ insertThread b s = runDb $ \c -> DB.withTransaction c $ do
                         , ":subject"    := subject s
                         , ":text"       := text s
                         , ":board"      := b]
+    insertedPostId c
 
 -- | Insert post with file attached, using previously obtained file Id.
-insertThreadWithFile :: Board -> PostStub -> Int -> IO ()
-insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $
+insertThreadWithFile :: Board -> PostStub -> Int -> IO Int
+insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $ do
     DB.executeNamed c   "INSERT INTO Posts (Name, Email, Subject, Text, FileId, Board, \
                         \LastBump, Sticky, Lock, Autosage, Cycle, ReplyCount) \
                         \VALUES (:name, :email, :subject, :text, :fileid, :board, \
@@ -209,6 +221,7 @@ insertThreadWithFile b s f = runDb $ \c -> DB.withTransaction c $
                         , ":text"       := text s
                         , ":fileid"     := f
                         , ":board"      := b]
+    insertedPostId c
 
 -- | Obtain ID of previously inserted file.
 getFileId :: Text -- ^ Filename
@@ -433,3 +446,22 @@ checkCaptcha t = runDb $ \c -> do
                 \WHERE Text = upper(?) AND ExpireDate >= strftime('%s','now'))" $ DB.Only t :: IO [DB.Only Bool]
     DB.execute c "DELETE FROM Captchas WHERE Text = upper(?)" $ DB.Only t
     return $ any DB.fromOnly isValid
+
+insertRefs :: Board -> Int -> Int -> [(Board,Int)] -> IO ()
+insertRefs b p n refs = runDb $ \c -> do
+    DB.executeMany c "INSERT INTO Refs (Board,Parent,Number,RefBoard,RefParent,RefNumber) \
+        \SELECT ?,?,?,R.Board,IFNULL(R.Parent,R.Number),R.Number \
+        \FROM Posts R WHERE R.Board = ? AND R.Number = ?" $
+        map (\(refB,refN) -> (b,p,n,refB,refN)) refs
+        
+getThreadRefs :: Board -> Int -> IO [(Int,Board,Int,Int)]
+getThreadRefs b n = runDb $ \c -> do
+    DB.query c "SELECT Number,RefBoard,RefParent,RefNumber \
+        \FROM Refs WHERE Board = ? AND Parent = ?"
+        (b,n)
+
+getBoardRefs :: Board -> IO [(Board,Int,Int)]
+getBoardRefs b = runDb $ \c -> do
+    DB.query c "SELECT RefBoard,RefNumber,RefParent \
+        \FROM Refs WHERE Board = ? AND Parent = Number"
+        (DB.Only b)
