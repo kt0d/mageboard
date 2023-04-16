@@ -224,16 +224,16 @@ replaceWith s p fun = do
 -- It may throw runtime error if match pattern is incorrect or if capture group
 -- with given number does not exist.
 {-# NOINLINE gsubWith #-}
-gsubWith :: Text -- ^ Input text
-    -> Text -- ^ Pattern to match
+gsubWith :: Text -- ^ Pattern to match
     -> ((Int -> Text) -> Text) -- Substituting function
+    -> Text -- ^ Input text
     -> Text -- ^ Output text
-gsubWith s p f = runIdentity $ unsafePerformIO $ replaceWith s p (return . f)
+gsubWith p f s = runIdentity $ unsafePerformIO $ replaceWith s p (return . f)
 
 -- | Monadic version of 'gsubWith'.
 {-# NOINLINE gsubWithM #-}
-gsubWithM :: Monad m => Text -> Text -> ((Int -> Text) -> m Text) -> m Text
-gsubWithM s p f = unsafePerformIO $ replaceWith s p f
+gsubWithM :: Monad m => Text -> ((Int -> Text) -> m Text) -> Text -> m Text
+gsubWithM p f s = unsafePerformIO $ replaceWith s p f
 
 collectMaches :: Monoid a => Text -> Text -> ((Int -> Text) -> a)  -> IO a
 collectMaches s p fun = do

@@ -34,9 +34,9 @@ formatStubWithRefs b refs (Stub a e s t) = Stub a e s newText where
     else doRefs b refs $ doMarkup $ escapeHTML t
 
 doRefs :: Board -> RefMap -> Text -> Text
-doRefs b refs t = crossMatched where
-  localMatched = gsubWith t "&gt;&gt;(\\d+)" $ doLocal
-  crossMatched = gsubWith localMatched "&gt;&gt;&gt;/(\\w+)/(\\d+)" doCrossBoard
+doRefs b refs = crossMatch . localMatch where
+  localMatch = gsubWith "&gt;&gt;(\\d+)" doLocal
+  crossMatch = gsubWith "&gt;&gt;&gt;/(\\w+)/(\\d+)" doCrossBoard
 
   toNum :: Text -> Int
   toNum x = case decimal x of Right (n,_) -> n
