@@ -10,6 +10,7 @@ module Imageboard.Actions.Moderation (
     toggleThreadCycle
 ) where
 import Control.Monad.Except
+import Control.Monad.IO.Class
 import qualified Data.Text.Lazy as Lazy
 import Data.Text (Text)
 import qualified Web.Scotty as S

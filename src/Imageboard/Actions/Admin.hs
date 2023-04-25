@@ -6,6 +6,7 @@ module Imageboard.Actions.Admin (
     createAccount
 ) where
 import Control.Monad.Except
+import Control.Monad.IO.Class
 import qualified Data.Password.Bcrypt as P
 import qualified Web.Scotty as S
 import Network.HTTP.Types.Status (created201, badRequest400)

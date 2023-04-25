@@ -4,6 +4,7 @@ module Imageboard.FileUpload (
     tryMkFile,
     FileData
 ) where
+import Control.Monad.IO.Class
 import Control.Monad.Except
 import Data.String (IsString)
 import Data.Text (Text)

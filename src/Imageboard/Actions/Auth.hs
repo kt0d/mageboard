@@ -8,6 +8,7 @@ module Imageboard.Actions.Auth (
     changePass
 ) where
 import Control.Monad.Except
+import Control.Monad.IO.Class
 import qualified Data.ByteString.Base64 as Base64
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE 

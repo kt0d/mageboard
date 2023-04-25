@@ -18,12 +18,12 @@ library mageboard-lib
   exposed-modules:
     Regex.PCRE2
   build-depends:       
-    base                  >= 4.13.0 && < 4.15,
-    text                  >= 1.2.4 && < 1.3,
+    base                  >= 4.13.0 && < 5,
+    text                  >= 2,
     array
   default-language:    Haskell2010
   GHC-options:         -Wall -debug -dcore-lint -threaded
-  extra-libraries:     pcre2-16
+  extra-libraries:     pcre2-8
 
 executable mageboard
   main-is:             Main.hs
@@ -49,25 +49,25 @@ executable mageboard
     Imageboard.FileUpload
   build-depends:       
     mageboard-lib,
-    base                  >= 4.13.0 && < 4.15,
-    directory             >= 1.3.6.0 && < 1.4,
-    base64-bytestring     >= 1.1.0 && < 1.2,
-    bytestring            >= 0.10.10 && < 0.11,
-    blaze-html            >= 0.9.1 && < 0.10,
-    text                  >= 1.2.4 && < 1.3,
-    cryptonite            >= 0.26 && < 0.27,
-    direct-sqlite         >= 2.3.26 && < 2.4,
+    base                  >= 4.13.0 && < 5,
+    directory             >= 1.3 && < 1.4,
+    base64-bytestring     >= 1.1,
+    bytestring            >= 0.10,
+    blaze-html            >= 0.9,
+    text                  >= 1.2,
+    cryptonite            >= 0.26,
+    direct-sqlite         >= 2.3,
     hs-captcha            >= 1.0 && < 1.1,
-    time                  >= 1.9.3 && < 1.10,
-    http-types            >= 0.12.3 && < 0.13,
-    mtl                   >= 2.2.2 && < 2.3,
-    password              >= 2.0.1 && < 2.1,
-    process               >= 1.6.8 && < 1.7,
-    scotty                >= 0.12 && < 0.13,
-    wai-extra             >= 3.1.13 && < 3.1.14,
-    scotty-cookie         >= 0.1.0 && < 0.2,
-    sqlite-simple         >= 0.4.18 && < 0.5,
-    wai-middleware-static >= 0.8.3 && <= 0.9,
+    time                  >= 1.9,
+    http-types            >= 0.12,
+    mtl                   >= 2.2 && < 2.3,
+    password              >= 3 && < 4,
+    process               >= 1.6,
+    scotty                >= 0.12,
+    wai-extra             >= 3.1,
+    scotty-cookie         >= 0.1,
+    sqlite-simple         >= 0.4,
+    wai-middleware-static >= 0.9 && <= 0.10,
     array,
     containers
   default-language:    Haskell2010
@@ -82,7 +82,7 @@ test-suite tests
   build-depends:
     mageboard-lib,
     HUnit,
-    base                  >= 4.13.0 && < 4.15,
-    text                  >= 1.2.4 && < 1.3
+    base,
+    text
   default-language:    Haskell2010
   ghc-options: -Wall

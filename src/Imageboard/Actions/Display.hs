@@ -7,6 +7,7 @@ module Imageboard.Actions.Display (
     displayHomePage
 ) where
 import Control.Monad.Except
+import Control.Monad.IO.Class
 import Graphics.Captcha (makeCaptcha)
 import qualified Data.ByteString.Lazy as BS
 import qualified Web.Scotty as S

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, ForeignFunctionInterface, CApiFFI, BangPatterns, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -optc "-DPCRE2_CODE_UNIT_WIDTH=16" #-}
+{-# OPTIONS_GHC -optc "-DPCRE2_CODE_UNIT_WIDTH=8" #-}
 
 -- see <https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/regexredux-ghc-3.html>
 -- and PCRE2 manpages, also available at <https://www.pcre.org/current/doc/html/pcre2api.html>
@@ -14,7 +14,7 @@ module Regex.PCRE2 (
     getAllMatches
 ) where
 import Control.Monad
-import Foreign (Word32, Word16, (.|.), 
+import Foreign (Word32, Word8, (.|.), 
     Ptr, nullPtr, poke, peek, with,
     alloca, allocaArray, mallocArray, peekArray, free)
 import Foreign.C (CInt(..), CSize(..))
@@ -29,7 +29,7 @@ import Data.Functor.Identity
 
 data Code -- PCRE2_CODE
 data MatchData -- PCRE2_MATCH_DATA
-type CText = Ptr Word16 -- PCRE2_SPTR aka const PCRE2_UCHAR*
+type CText = Ptr Word8 -- PCRE2_SPTR aka const PCRE2_UCHAR*
 
 data RegexReplace = REReplace {pattern, replacement :: Text}
 
@@ -63,35 +63,35 @@ foreign import capi "pcre2.h value PCRE2_SUBSTITUTE_OVERFLOW_LENGTH"
 foreign import capi "pcre2.h value PCRE2_ERROR_NOMATCH"
   c_PCRE2_ERROR_NOMATCH :: CInt
 
-foreign import ccall "pcre2.h pcre2_compile_16"
+foreign import ccall "pcre2.h pcre2_compile_8"
   c_pcre2_compile :: CText -> CSize -> Word32 -> Ptr CInt -> Ptr CSize
     -> Ptr () -> IO (Ptr Code)
 
-foreign import ccall "pcre2.h pcre2_get_error_message_16"
-      c_pcre2_get_error_message :: CInt -> Ptr Word16 -> CSize -> IO CInt
+foreign import ccall "pcre2.h pcre2_get_error_message_8"
+      c_pcre2_get_error_message :: CInt -> Ptr Word8 -> CSize -> IO CInt
 
-foreign import ccall "pcre2.h pcre2_substitute_16"
+foreign import ccall "pcre2.h pcre2_substitute_8"
     c_pcre2_substitute :: Ptr Code -> CText -> CSize -> CSize
         -> Word32 -> Ptr () -> Ptr ()
-        -> CText -> CSize -> Ptr Word16 -> Ptr CSize -> IO CInt
+        -> CText -> CSize -> Ptr Word8 -> Ptr CSize -> IO CInt
 
-foreign import ccall "pcre2.h pcre2_match_16"
+foreign import ccall "pcre2.h pcre2_match_8"
     c_pcre2_match :: Ptr Code -> CText -> CSize -> CSize
         -> Word32 -> Ptr MatchData -> Ptr () -> IO CInt
 
-foreign import ccall "pcre2.h pcre2_code_free_16"
+foreign import ccall "pcre2.h pcre2_code_free_8"
   c_pcre2_code_free :: Ptr Code -> IO ()
 
-foreign import ccall "pcre2.h pcre2_match_data_create_from_pattern_16"
+foreign import ccall "pcre2.h pcre2_match_data_create_from_pattern_8"
     c_pcre2_match_data_create_from_pattern :: Ptr Code -> Ptr () -> IO (Ptr MatchData)
 
-foreign import ccall "pcre2.h pcre2_get_ovector_count_16"
+foreign import ccall "pcre2.h pcre2_get_ovector_count_8"
     c_pcre2_get_ovector_count :: Ptr MatchData -> IO Word32
 
-foreign import ccall "pcre2.h pcre2_get_ovector_pointer_16"
+foreign import ccall "pcre2.h pcre2_get_ovector_pointer_8"
     c_pcre2_get_ovector_pointer :: Ptr MatchData -> IO (Ptr CSize)
 
-foreign import ccall "pcre2.h pcre2_match_data_free_16"
+foreign import ccall "pcre2.h pcre2_match_data_free_8"
   c_pcre2_match_data_free :: Ptr MatchData -> IO ()
 
 compilePattern :: Text -> IO (Ptr Code)
@@ -153,14 +153,14 @@ substitute res subject = do
 useAsPtr :: Text -> (CText -> CSize -> IO a) -> IO a
 useAsPtr t f = TF.useAsPtr t $ \tPtr tLen -> f tPtr (fromIntegral tLen)
 
-unsafeToPtr :: Text -> IO (Ptr Word16, Int)
+unsafeToPtr :: Text -> IO (Ptr Word8, Int)
 unsafeToPtr t = do
-    let len = TF.lengthWord16 t
+    let len = TF.lengthWord8 t
     t' <- mallocArray len
     TF.unsafeCopyToPtr t t'
     return (t', len)
 
-unsafeToText :: Ptr Word16 -> Int -> IO Text
+unsafeToText :: Ptr Word8 -> Int -> IO Text
 unsafeToText t' len = do
     t <- TF.fromPtr t' (fromIntegral len)
     free t'
@@ -179,15 +179,15 @@ ovectorToArray subject matchData = do
     ovCount <- c_pcre2_get_ovector_count matchData
     ovPtr <- c_pcre2_get_ovector_pointer matchData
     ovector <- toPairs <$> peekArray (2 * fromIntegral ovCount) ovPtr
-    let ovArr = A.listArray (0,fromIntegral ovCount - 1) $ map (flip sliceWord16 subject) ovector
+    let ovArr = A.listArray (0,fromIntegral ovCount - 1) $ map (flip sliceWord8 subject) ovector
     return (head ovector, ovArr)
     where
         toPairs (x0:x1:xs) = (x0,x1) : toPairs xs
         toPairs [] = []
         toPairs _ = errorWithoutStackTrace "odd number of elements in list"
 
-sliceWord16 :: Integral a => (a,a) -> Text -> Text
-sliceWord16 (a,b) = TF.takeWord16 (fromIntegral (b-a)) . TF.dropWord16 (fromIntegral a)
+sliceWord8 :: Integral a => (a,a) -> Text -> Text
+sliceWord8 (a,b) = TF.takeWord8 (fromIntegral (b-a)) . TF.dropWord8 (fromIntegral a)
 
 replaceWith :: Monad m => Text -> Text -> ((Int -> Text) -> m Text) -> IO (m Text)
 replaceWith s p fun = do
@@ -202,14 +202,14 @@ replaceWith s p fun = do
             if ret == c_PCRE2_ERROR_NOMATCH
             then let newSofar = do
                         t <- sofar
-                        return $ t <> TF.dropWord16 (fromIntegral startOffset) s
+                        return $ t <> TF.dropWord8 (fromIntegral startOffset) s
                  in return (newSofar,0)
             else do
                 ((matchOffset,afterMatch),ovArr) <- ovectorToArray s matchData
                 let newSofar = do
                         t <- sofar
                         replac <- fun (ovArr A.!)
-                        return $ t <> sliceWord16 (startOffset,matchOffset) s <> replac
+                        return $ t <> sliceWord8 (startOffset,matchOffset) s <> replac
                 loop (newSofar,afterMatch)
     (output,_::CSize) <- loop (return T.empty,0)
     free s'
