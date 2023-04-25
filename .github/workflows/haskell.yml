@@ -32,6 +32,11 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-
           ${{ runner.os }}-build-
           ${{ runner.os }}-
+          
+    - name: Install gd, pcre2
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgd-dev libpcre2-dev
 
     - name: Install dependencies
       run: |
