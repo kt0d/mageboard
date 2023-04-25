@@ -9,7 +9,7 @@ module Imageboard.Actions.Moderation (
     toggleThreadLock,
     toggleThreadCycle
 ) where
-import Control.Monad.Except
+import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Text.Lazy as Lazy
 import Data.Text (Text)

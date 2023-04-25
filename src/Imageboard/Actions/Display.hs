@@ -6,7 +6,7 @@ module Imageboard.Actions.Display (
     displayRecent,
     displayHomePage
 ) where
-import Control.Monad.Except
+import Control.Monad
 import Control.Monad.IO.Class
 import Graphics.Captcha (makeCaptcha)
 import qualified Data.ByteString.Lazy as BS

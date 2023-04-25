@@ -5,6 +5,7 @@ module Imageboard.Actions.Admin (
     prepareBoardEdit,
     createAccount
 ) where
+import Control.Monad
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import qualified Data.Password.Bcrypt as P

@@ -6,6 +6,7 @@ module Imageboard.Actions.Posting (
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import Data.Maybe
 import Data.String (IsString)
 import Data.Foldable (fold)

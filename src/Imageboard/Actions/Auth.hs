@@ -9,6 +9,7 @@ module Imageboard.Actions.Auth (
 ) where
 import Control.Monad.Except
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import qualified Data.ByteString.Base64 as Base64
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE 

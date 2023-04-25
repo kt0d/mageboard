@@ -20,10 +20,8 @@ import Foreign (Word32, Word8, (.|.),
 import Foreign.C (CInt(..), CSize(..))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.IO as T
 import qualified Data.Text.Foreign as TF
 import System.IO.Unsafe (unsafePerformIO)
-import Debug.Trace
 import qualified Data.Array as A
 import Data.Functor.Identity
 
